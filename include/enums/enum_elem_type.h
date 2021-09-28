@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -71,6 +71,11 @@ enum ElemType : int {
                TRISHELL3 = 30,
                QUADSHELL4 = 31,
                QUADSHELL8 = 32,
+               // Elems with Tri7 (Tri with mid-face node) faces
+               TRI7 = 33,
+               TET14 = 34,
+               PRISM20 = 35,
+               PYRAMID18 = 36,
                // Invalid
                INVALID_ELEM};   // should always be last
 

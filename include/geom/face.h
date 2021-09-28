@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -73,6 +73,12 @@ public:
   { return build_side_ptr(i); }
 
   /**
+   * build_side and build_edge are identical for faces.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i) override final
+  { build_side_ptr(edge, i); }
+
+ /**
    * is_edge_on_side is trivial in 2D.
    */
   virtual bool is_edge_on_side(const unsigned int e,

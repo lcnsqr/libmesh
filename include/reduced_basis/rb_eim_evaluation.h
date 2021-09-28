@@ -99,19 +99,11 @@ public:
   RBParametrizedFunction & get_parametrized_function();
 
   /**
-   * Calculate the EIM approximation to parametrized_function
-   * using the first \p N EIM basis functions. Store the
-   * solution coefficients in the member _eim_solution.
-   * \returns The EIM a posteriori error bound.
-   */
-  virtual Real rb_eim_solve(unsigned int N);
-
-  /**
    * Calculate the EIM approximation for the given
    * right-hand side vector \p EIM_rhs. Store the
    * solution coefficients in the member _eim_solution.
    */
-  void rb_eim_solve(DenseVector<Number> & EIM_rhs);
+  DenseVector<Number> rb_eim_solve(DenseVector<Number> & EIM_rhs);
 
   /**
    * Perform rb_eim_solves at each mu in \p mus and store the results
@@ -203,15 +195,31 @@ public:
   const QpDataMap & get_basis_function(unsigned int i) const;
 
   /**
-   * Return a const reference to the EIM solution coefficients from the most
-   * recent solve.
+   * Set _rb_eim_solutions. Normally we update _rb_eim_solutions by performing
+   * and EIM solve, but in some cases we want to set the EIM solution coefficients
+   * elsewhere, so this setter enables us to do that.
    */
-  const DenseVector<Number> & get_rb_eim_solution() const;
+  void set_rb_eim_solutions(const std::vector<DenseVector<Number>> & rb_eim_solutions);
+
+  /**
+   * Return the EIM solution coefficients from the most recent call to rb_eim_solves().
+   */
+  const std::vector<DenseVector<Number>> & get_rb_eim_solutions() const;
 
   /**
    * Return entry \p index for each solution in _rb_eim_solutions.
    */
   std::vector<Number> get_rb_eim_solutions_entries(unsigned int index) const;
+
+  /**
+   * Return a const reference to the EIM solutions for the parameters in the training set.
+   */
+  const std::vector<DenseVector<Number>> & get_eim_solutions_for_training_set() const;
+
+  /**
+   * Return a writeable reference to the EIM solutions for the parameters in the training set.
+   */
+  std::vector<DenseVector<Number>> & get_eim_solutions_for_training_set();
 
   /**
    * Set the data associated with EIM interpolation points.
@@ -222,6 +230,7 @@ public:
   void add_interpolation_points_xyz_perturbations(const std::vector<Point> & perturbs);
   void add_interpolation_points_elem_id(dof_id_type elem_id);
   void add_interpolation_points_qp(unsigned int qp);
+  void add_interpolation_points_phi_i_qp(const std::vector<Real> & phi_i_qp);
 
   /**
    * Get the data associated with EIM interpolation points.
@@ -232,6 +241,7 @@ public:
   const std::vector<Point> & get_interpolation_points_xyz_perturbations(unsigned int index) const;
   dof_id_type get_interpolation_points_elem_id(unsigned int index) const;
   unsigned int get_interpolation_points_qp(unsigned int index) const;
+  const std::vector<Real> & get_interpolation_points_phi_i_qp(unsigned int index) const;
 
   /**
    * Set entry of the EIM interpolation matrix.
@@ -253,13 +263,54 @@ public:
     dof_id_type elem_id,
     subdomain_id_type subdomain_id,
     unsigned int qp,
-    const std::vector<Point> & perturbs);
+    const std::vector<Point> & perturbs,
+    const std::vector<Real> & phi_i_qp);
 
   /**
-   * Boolean to indicate whether we evaluate a posteriori error bounds
-   * when eim_solve is called.
+   * Set the observation points and components.
    */
-  bool evaluate_eim_error_bound;
+  void set_observation_points(const std::vector<Point> & observation_points_xyz);
+
+  /**
+   * Get the number of observation points.
+   */
+  unsigned int get_n_observation_points() const;
+
+  /**
+   * Get the observation points.
+   */
+  const std::vector<Point> & get_observation_points() const;
+
+  /**
+   * Get the observation value for the specified basis function and observation point.
+   */
+  const std::vector<Number> & get_observation_values(unsigned int bf_index, unsigned int obs_pt_index) const;
+
+  /**
+   * Get a const reference to all the observation values, indexed as follows:
+   *  basis_function index --> observation point index --> value.
+   */
+  const std::vector<std::vector<std::vector<Number>>> & get_observation_values() const;
+
+  /**
+   * Add values at the observation points for a new basis function.
+   */
+  void add_observation_values_for_basis_function(const std::vector<std::vector<Number>> & values);
+
+  /**
+   * Set all observation values.
+   */
+  void set_observation_values(const std::vector<std::vector<std::vector<Number>>> & values);
+
+  /**
+   * Set _preserve_rb_eim_solutions.
+   */
+  void set_preserve_rb_eim_solutions(bool preserve_rb_eim_solutions);
+
+  /**
+   * Get _preserve_rb_eim_solutions.
+   */
+  bool get_preserve_rb_eim_solutions() const;
 
   /**
    * Write out all the basis functions to file.
@@ -289,22 +340,51 @@ public:
                                bool read_binary_basis_functions = true);
 
   /**
-   * Storage for EIM solutions in the case that we have is_lookup_table==true
-   * in our RBParametrizedFunction.
+   * Project variable \p var of \p bf_data into the solution vector of System.
    */
-  std::vector<DenseVector<Number>> eim_solutions;
-
-private:
+  void project_qp_data_map_onto_system(System & sys,
+                                       const QpDataMap & bf_data,
+                                       unsigned int var);
 
   /**
-   * The EIM solution coefficients from the most recent rb_eim_solve().
+   * Return a set that specifies which EIM variables will be projected
+   * and written out in write_out_projected_basis_functions().
+   * By default this returns an empty vector, but can be overridden in
+   * subclasses to specify the EIM variables that are relevant for visualization.
    */
-  DenseVector<Number> _rb_eim_solution;
+  virtual std::set<unsigned int> get_eim_vars_to_project_and_write() const;
+
+  /**
+   * Project all basis functions using project_qp_data_map_onto_system() and
+   * then write out the resulting vectors.
+   */
+  void write_out_projected_basis_functions(System & sys,
+                                           const std::string & directory_name = "offline_data");
+
+  /**
+   * Indicate whether we should apply scaling to the components of the parametrized
+   * function during basis function enrichment in order give an approximately uniform
+   * magnitude for all components. This is helpful in cases where the components vary
+   * widely in magnitude.
+   */
+  virtual bool scale_components_in_enrichment() const;
+
+private:
 
   /**
    * The EIM solution coefficients from the most recent call to rb_eim_solves().
    */
   std::vector<DenseVector<Number>> _rb_eim_solutions;
+
+  /**
+   * Storage for EIM solutions from the training set. This is typically used in
+   * the case that we have is_lookup_table==true in our RBParametrizedFunction,
+   * since in that case we need to store all the EIM solutions on the training
+   * set so that we do not always need to refer to the lookup table itself
+   * (since in some cases, like in the Online stage, the lookup table is not
+   * available).
+   */
+  std::vector<DenseVector<Number>> _eim_solutions_for_training_set;
 
   /**
    * The parameters and the number of basis functions that were used in the
@@ -347,6 +427,13 @@ private:
   std::vector<unsigned int> _interpolation_points_qp;
 
   /**
+   * We store the shape function values at the qp as well. These values
+   * allows us to evaluate parametrized functions that depend on nodal
+   * data.
+   */
+  std::vector<std::vector<Real>> _interpolation_points_phi_i_qp;
+
+  /**
    * Store the parametrized function that will be approximated
    * by this EIM system. Note that the parametrized function
    * may have more than one component, and each component is
@@ -366,7 +453,7 @@ private:
    * is as follows:
    *   basis function index --> element ID --> variable --> quadrature point --> value
    * We use a map to index the element ID, since the IDs on this processor in
-   * generally will not start at zero.
+   * general will not start at zero.
    */
   std::vector<QpDataMap> _local_eim_basis_functions;
 
@@ -389,6 +476,32 @@ private:
    * they are read in on processor 0.
    */
   void distribute_bfs(const System & sys);
+
+  /**
+   * Let {p_1,...,p_n} be a set of n "observation points", where we can
+   * observe the values of our EIM basis functions. Also, let
+   * {comp_k} be the components of the EIM basis function that
+   * we will observe. Then the corresponding observation values, v_ijk,
+   * are given by:
+   *  v_ijk = eim_basis_function[i][p_j][comp_k].
+   *
+   * These observation values can be used to observe the EIM approximation
+   * at specific points of interest, where the points of interest are defined
+   * by the observation points.
+   *
+   * _observation_points_value is indexed as follows:
+   *  basis_function index --> observation point index --> comp index --> value
+   */
+  std::vector<Point> _observation_points_xyz;
+  std::vector<std::vector<std::vector<Number>>> _observation_points_values;
+
+  /**
+   * Boolean to indicate if we skip updating _rb_eim_solutions in rb_eim_solves().
+   * This is relevant for cases when we set up _rb_eim_solutions elsewhere and we
+   * want to avoid changing it.
+   */
+  bool _preserve_rb_eim_solutions;
+
 };
 
 }

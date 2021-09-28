@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -678,6 +678,28 @@ struct ActiveSubdomainSet : abstract_multi_predicate<T>
 
 
 /**
+ * Used to iterate over non-nullptr, active elements with a given PID
+ * whose subdomains are in a user-specified set.
+ */
+template <typename T>
+struct ActiveLocalSubdomainSet : abstract_multi_predicate<T>
+{
+  ActiveLocalSubdomainSet(processor_id_type my_pid,
+                          std::set<subdomain_id_type> sset)
+  {
+    this->_predicates.push_back(new not_null<T>);
+    this->_predicates.push_back(new active<T>);
+    this->_predicates.push_back(new pid<T>(my_pid));
+    this->_predicates.push_back(new subdomain_set<T>(sset));
+  }
+};
+
+
+
+
+
+
+/**
  * Used to iterate over non-nullptr elements not owned by a given
  * processor but semi-local to that processor, i.e. ghost elements.
  */
@@ -708,6 +730,23 @@ struct Evaluable: abstract_multi_predicate<T>
     this->_predicates.push_back(new not_null<T>);
     this->_predicates.push_back(new active<T>);
     this->_predicates.push_back(new evaluable<T>(dof_map, var_num));
+  }
+};
+
+
+
+/**
+ * Used to iterate over elements where solutions indexed by a given
+ * vector of DofMaps are evaluable for all variables
+ */
+template <typename T>
+struct MultiEvaluable: abstract_multi_predicate<T>
+{
+  MultiEvaluable(const std::vector<const DofMap *> & dof_maps)
+  {
+    this->_predicates.push_back(new not_null<T>);
+    this->_predicates.push_back(new active<T>);
+    this->_predicates.push_back(new multi_evaluable<T>(dof_maps));
   }
 };
 

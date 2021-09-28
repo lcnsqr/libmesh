@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -160,7 +160,7 @@ public:
    * \returns A pointer to a NodeElem for the specified node.
    */
   virtual std::unique_ptr<Elem> build_side_ptr (const unsigned int i,
-                                                bool proxy=true) override final;
+                                                bool proxy=false) override final;
 
   /**
    * Rebuilds a NODEELEM for the specified node.
@@ -174,12 +174,25 @@ public:
   virtual std::unique_ptr<Elem> build_edge_ptr (const unsigned int) override final
   { libmesh_not_implemented(); return std::unique_ptr<Elem>(); }
 
+  /**
+   * The \p Elem::build_edge_ptr() member makes no sense for edges.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> &, const unsigned int) override final
+  { libmesh_not_implemented(); }
+
   virtual std::vector<unsigned int> nodes_on_side(const unsigned int s) const override;
 
   virtual std::vector<unsigned int> nodes_on_edge(const unsigned int e) const override;
 
   virtual std::vector<unsigned int> sides_on_edge(const unsigned int) const override final
   { return {}; }
+
+  // Any edge permutation flips the mapping Jacobian negative
+  virtual unsigned int n_permutations() const override final { return 0; }
+
+  virtual void permute(unsigned int) override final { libmesh_error(); }
+
+  unsigned int center_node_on_side(const unsigned short side) const override final;
 
 protected:
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -36,6 +36,14 @@
 #include "libmesh/mesh_tools.h"  // for elem_types warning
 #endif
 
+#include <libmesh/ignore_warnings.h>
+namespace exII {
+extern "C" {
+#include "exodusII.h" // defines MAX_LINE_LENGTH, MAX_STR_LENGTH used later
+}
+}
+#include <libmesh/restore_warnings.h>
+
 // C++ includes
 #include <algorithm>
 #include <sstream>
@@ -58,14 +66,14 @@ const std::vector<int> quadshell4_inverse_edge_map = {3, 4, 5, 6};
 const std::vector<int> hex27_node_map = {
   // Vertex and mid-edge nodes
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-  // Mid-face nodes and centroid
+  // Mid-face nodes and center node
   21, 25, 24, 26, 23, 22, 20};
 //20  21  22  23  24  25  26 // LibMesh indices
 
 const std::vector<int> hex27_inverse_node_map = {
   // Vertex and mid-edge nodes
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-  // Mid-face nodes and centroid
+  // Mid-face nodes and center node
   26, 20, 25, 24, 22, 21, 23};
 //20  21  22  23  24  25  26
 
@@ -86,6 +94,26 @@ const std::vector<int> hex_edge_map =
 // 3D inverse element edge maps. Map libmesh edge ids to 1-based Exodus edge ids.
 const std::vector<int> hex_inverse_edge_map =
   {1,2,3,4,9,10,12,11,5,6,7,8};
+
+  /**
+   * \returns The value obtained from a generic exII::ex_inquire() call.
+   */
+  int inquire(libMesh::ExodusII_IO_Helper & e2h, exII::ex_inquiry req_info_in, std::string error_msg="")
+  {
+    int ret_int = 0;
+    char ret_char = 0;
+    float ret_float = 0.;
+
+    e2h.ex_err = exII::ex_inquire(e2h.ex_id,
+                                  req_info_in,
+                                  &ret_int,
+                                  &ret_float,
+                                  &ret_char);
+
+    EX_CHECK_ERR(e2h.ex_err, error_msg);
+
+    return ret_int;
+  }
 
 } // end anonymous namespace
 
@@ -595,7 +623,7 @@ void ExodusII_IO_Helper::read_qa_records()
 {
   // The QA records are four MAX_STR_LENGTH-byte character strings.
   int num_qa_rec =
-    this->inquire(exII::EX_INQ_QA, "Error retrieving number of QA records");
+    inquire(*this, exII::EX_INQ_QA, "Error retrieving number of QA records");
 
   if (verbose)
     libMesh::out << "Found "
@@ -882,15 +910,12 @@ void ExodusII_IO_Helper::read_edge_blocks(MeshBase & mesh)
   // of the same Edge.
   typedef std::pair<dof_id_type, unsigned int> ElemEdgePair;
   std::unordered_map<dof_id_type, std::vector<ElemEdgePair>> edge_map;
+  std::unique_ptr<Elem> edge_ptr;
   for (const auto & elem : mesh.element_ptr_range())
     for (auto e : elem->edge_index_range())
       {
-        // TODO: Make various Elem::compute_key() functions
-        // unprotected, this would allow us to avoid calling
-        // build_edge_ptr() repeatedly in case that turns out to be
-        // a bottleneck.
-        std::unique_ptr<Elem> edge = elem->build_edge_ptr(e);
-        dof_id_type edge_key = edge->key();
+        elem->build_edge_ptr(edge_ptr, e);
+        dof_id_type edge_key = edge_ptr->key();
 
         // Creates vector if not already there
         auto & vec = edge_map[edge_key];
@@ -980,15 +1005,14 @@ void ExodusII_IO_Helper::read_edge_blocks(MeshBase & mesh)
                   // this check avoids a false positive.
 
                   // Build edge indicated by elem_edge_pair
-                  auto candidate_edge =
-                    mesh.elem_ptr(elem_edge_pair.first)->
-                    build_edge_ptr(elem_edge_pair.second);
+                  mesh.elem_ptr(elem_edge_pair.first)->
+                    build_edge_ptr(edge_ptr, elem_edge_pair.second);
 
                   // Determine whether this candidate edge is a "real" match,
                   // i.e. also has the same orientation.
                   bool is_match = true;
                   for (int n=0; n<num_nodes_per_edge; ++n)
-                    if (candidate_edge->node_id(n) != edge->node_id(n))
+                    if (edge_ptr->node_id(n) != edge->node_id(n))
                       {
                         is_match = false;
                         break;
@@ -1054,7 +1078,7 @@ void ExodusII_IO_Helper::read_sideset_info()
       num_df_per_set.resize(num_side_sets);
 
       // Inquire about the length of the concatenated side sets element list
-      num_elem_all_sidesets = inquire(exII::EX_INQ_SS_ELEM_LEN, "Error retrieving length of the concatenated side sets element list!");
+      num_elem_all_sidesets = inquire(*this, exII::EX_INQ_SS_ELEM_LEN, "Error retrieving length of the concatenated side sets element list!");
 
       elem_list.resize (num_elem_all_sidesets);
       side_list.resize (num_elem_all_sidesets);
@@ -1152,20 +1176,20 @@ void ExodusII_IO_Helper::read_all_nodesets()
   // Figure out how many nodesets there are in the file so we can
   // properly resize storage as necessary.
   num_node_sets =
-    this->inquire
-    (exII::EX_INQ_NODE_SETS,
+    inquire
+    (*this, exII::EX_INQ_NODE_SETS,
      "Error retrieving number of node sets");
 
   // Figure out how many nodes there are in all the nodesets.
   int total_nodes_in_all_sets =
-    this->inquire
-    (exII::EX_INQ_NS_NODE_LEN,
+    inquire
+    (*this, exII::EX_INQ_NS_NODE_LEN,
      "Error retrieving number of nodes in all node sets.");
 
   // Figure out how many distribution factors there are in all the nodesets.
   int total_df_in_all_sets =
-    this->inquire
-    (exII::EX_INQ_NS_DF_LEN,
+    inquire
+    (*this, exII::EX_INQ_NS_DF_LEN,
      "Error retrieving number of distribution factors in all node sets.");
 
   // If there are no nodesets, there's nothing to read in.
@@ -1235,25 +1259,6 @@ void ExodusII_IO_Helper::close()
 
 
 
-int ExodusII_IO_Helper::inquire(int req_info_in, std::string error_msg)
-{
-  int ret_int = 0;
-  char ret_char = 0;
-  float ret_float = 0.;
-
-  ex_err = exII::ex_inquire(ex_id,
-                            req_info_in,
-                            &ret_int,
-                            &ret_float,
-                            &ret_char);
-
-  EX_CHECK_ERR(ex_err, error_msg);
-
-  return ret_int;
-}
-
-
-
 void ExodusII_IO_Helper::read_time_steps()
 {
   // Make sure we have an up-to-date count of the number of time steps in the file.
@@ -1274,7 +1279,7 @@ void ExodusII_IO_Helper::read_time_steps()
 void ExodusII_IO_Helper::read_num_time_steps()
 {
   num_time_steps =
-    this->inquire(exII::EX_INQ_TIME, "Error retrieving number of time steps");
+    inquire(*this, exII::EX_INQ_TIME, "Error retrieving number of time steps");
 }
 
 
@@ -1663,7 +1668,27 @@ void ExodusII_IO_Helper::initialize(std::string str_title, const MeshBase & mesh
     for (const auto & id : shellface_boundaries)
       unique_side_boundaries.push_back(id);
   }
+  // Add any empty-but-named side boundary ids
+  for (const auto & pair : bi.get_sideset_name_map())
+    {
+      const boundary_id_type id = pair.first;
+
+      if (std::find(unique_side_boundaries.begin(),
+                    unique_side_boundaries.end(), id)
+            == unique_side_boundaries.end())
+        unique_side_boundaries.push_back(id);
+    }
+
   bi.build_node_boundary_ids(unique_node_boundaries);
+  for (const auto & pair : bi.get_nodeset_name_map())
+    {
+      const boundary_id_type id = pair.first;
+
+      if (std::find(unique_node_boundaries.begin(),
+                    unique_node_boundaries.end(), id)
+            == unique_node_boundaries.end())
+        unique_node_boundaries.push_back(id);
+    }
 
   num_side_sets = cast_int<int>(unique_side_boundaries.size());
   num_node_sets = cast_int<int>(unique_node_boundaries.size());
@@ -1941,6 +1966,7 @@ void ExodusII_IO_Helper::write_elements(const MeshBase & mesh, bool use_disconti
   std::map<boundary_id_type, std::vector<int>> edge_id_to_conn;
   std::map<boundary_id_type, std::pair<ElemType, unsigned int>> edge_id_to_elem_type;
 
+  std::unique_ptr<const Elem> edge;
   for (const auto & t : edge_tuples)
     {
       dof_id_type elem_id = std::get<0>(t);
@@ -1948,8 +1974,7 @@ void ExodusII_IO_Helper::write_elements(const MeshBase & mesh, bool use_disconti
       boundary_id_type b_id = std::get<2>(t);
 
       // Build the edge in question
-      std::unique_ptr<const Elem> edge =
-        mesh.elem_ptr(elem_id)->build_edge_ptr(edge_id);
+      mesh.elem_ptr(elem_id)->build_edge_ptr(edge, edge_id);
 
       // Error checking: make sure that all edges in this block are
       // the same geometric type.
@@ -2277,6 +2302,17 @@ void ExodusII_IO_Helper::write_sidesets(const MeshBase & mesh)
       side_boundary_ids.push_back(id);
   }
 
+  // Add any empty-but-named side boundary ids
+  for (const auto & pair : mesh.get_boundary_info().get_sideset_name_map())
+    {
+      const boundary_id_type id = pair.first;
+
+      if (std::find(side_boundary_ids.begin(),
+                    side_boundary_ids.end(), id)
+            == side_boundary_ids.end())
+        side_boundary_ids.push_back(id);
+    }
+
   // Write out the sideset names, but only if there is something to write
   if (side_boundary_ids.size() > 0)
     {
@@ -2291,11 +2327,22 @@ void ExodusII_IO_Helper::write_sidesets(const MeshBase & mesh)
 
           sets[i].id = ss_id;
           sets[i].type = exII::EX_SIDE_SET;
-          sets[i].num_entry = elem[ss_id].size();
           sets[i].num_distribution_factor = 0;
-          sets[i].entry_list = elem[ss_id].data();
-          sets[i].extra_list = side[ss_id].data();
           sets[i].distribution_factor_list = nullptr;
+
+          auto elem_it = elem.find(ss_id);
+          if (elem_it == elem.end())
+            {
+              sets[i].num_entry = 0;
+              sets[i].entry_list = nullptr;
+              sets[i].extra_list = nullptr;
+            }
+          else
+            {
+              sets[i].num_entry = elem_it->second.size();
+              sets[i].entry_list = elem_it->second.data();
+              sets[i].extra_list = libmesh_map_find(side, ss_id).data();
+            }
         }
 
       ex_err = exII::ex_put_sets(ex_id, side_boundary_ids.size(), sets.data());
@@ -2333,9 +2380,19 @@ void ExodusII_IO_Helper::write_nodesets(const MeshBase & mesh)
   std::vector<boundary_id_type> node_boundary_ids;
   mesh.get_boundary_info().build_node_boundary_ids(node_boundary_ids);
 
+  // Add any empty-but-named node boundary ids
+  for (const auto & pair : mesh.get_boundary_info().get_nodeset_name_map())
+    {
+      const boundary_id_type id = pair.first;
+
+      if (std::find(node_boundary_ids.begin(),
+                    node_boundary_ids.end(), id)
+            == node_boundary_ids.end())
+        node_boundary_ids.push_back(id);
+    }
+
   // Write out the nodeset names, but only if there is something to write
-  if (node_boundary_ids.size() > 0 &&
-      bc_tuples.size() > 0)
+  if (node_boundary_ids.size() > 0)
     {
       NamesData names_table(node_boundary_ids.size(), MAX_STR_LENGTH);
 
@@ -2356,6 +2413,9 @@ void ExodusII_IO_Helper::write_nodesets(const MeshBase & mesh)
 
       // Assign entries to node_sets_node_list, keeping track of counts as we go.
       std::map<boundary_id_type, unsigned int> nodeset_counts;
+      for (auto id : node_boundary_ids)
+        nodeset_counts[id] = 0;
+
       for (const auto & t : bc_tuples)
         {
           const dof_id_type & node_id = std::get<0>(t) + 1; // Note: we use 1-based node ids in Exodus!
@@ -2573,8 +2633,7 @@ void ExodusII_IO_Helper::write_timestep(int timestep, Real time)
     }
   EX_CHECK_ERR(ex_err, "Error writing timestep.");
 
-  ex_err = exII::ex_update(ex_id);
-  EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+  this->update();
 }
 
 
@@ -3087,8 +3146,7 @@ void ExodusII_IO_Helper::write_element_values
         }
     }
 
-  ex_err = exII::ex_update(ex_id);
-  EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+  this->update();
 }
 
 
@@ -3220,8 +3278,7 @@ void ExodusII_IO_Helper::write_element_values_element_major
           }
       } // for each var_id
 
-  ex_err = exII::ex_update(ex_id);
-  EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+  this->update();
 }
 
 
@@ -3242,8 +3299,7 @@ ExodusII_IO_Helper::write_nodal_values(int var_id,
 
       EX_CHECK_ERR(ex_err, "Error writing nodal values.");
 
-      ex_err = exII::ex_update(ex_id);
-      EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+      this->update();
     }
 }
 
@@ -3258,7 +3314,7 @@ void ExodusII_IO_Helper::write_information_records(const std::vector<std::string
   // example, if we're appending) and in that case, according to the
   // Exodus documentation, writing more information records is not
   // supported.
-  int num_info = inquire(exII::EX_INQ_INFO, "Error retrieving the number of information records from file!");
+  int num_info = inquire(*this, exII::EX_INQ_INFO, "Error retrieving the number of information records from file!");
   if (num_info > 0)
     {
       libMesh::err << "Warning! The Exodus file already contains information records.\n"
@@ -3281,8 +3337,7 @@ void ExodusII_IO_Helper::write_information_records(const std::vector<std::string
       ex_err = exII::ex_put_info(ex_id, num_records, info.get_char_star_star());
       EX_CHECK_ERR(ex_err, "Error writing global values.");
 
-      ex_err = exII::ex_update(ex_id);
-      EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+      this->update();
     }
 }
 
@@ -3301,9 +3356,16 @@ void ExodusII_IO_Helper::write_global_values(const std::vector<Real> & values, i
 
       EX_CHECK_ERR(ex_err, "Error writing global values.");
 
-      ex_err = exII::ex_update(ex_id);
-      EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
+      this->update();
     }
+}
+
+
+
+void ExodusII_IO_Helper::update()
+{
+  ex_err = exII::ex_update(ex_id);
+  EX_CHECK_ERR(ex_err, "Error flushing buffers to file.");
 }
 
 

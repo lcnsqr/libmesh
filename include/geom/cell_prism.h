@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -145,6 +145,11 @@ public:
   virtual void side_ptr (std::unique_ptr<Elem> & side, const unsigned int i) override final;
 
   virtual std::vector<unsigned int> sides_on_edge(const unsigned int e) const override final;
+
+  /**
+   * Two triangular sides, three orientations.
+   */
+  virtual unsigned int n_permutations() const override final { return 6; }
 
 protected:
 

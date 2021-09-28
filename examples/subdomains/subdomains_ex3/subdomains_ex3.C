@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -37,6 +37,7 @@
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/parallel.h"
+#include "libmesh/getpot.h"
 
 // Bring in everything from the libMesh namespace
 using namespace libMesh;
@@ -100,10 +101,14 @@ int main (int argc, char ** argv)
   // This class handles all the details of mesh refinement and coarsening.
   MeshRefinement mesh_refinement (mesh);
 
-  // Uniformly refine the mesh 4 times.  This is the
-  // first time we use the mesh refinement capabilities
-  // of the library.
-  mesh_refinement.uniformly_refine (4);
+  GetPot command_line (argc, argv);
+
+  // Uniformly refine the mesh, by default 4 times.
+  int n_refinements = 4;
+  if (command_line.search(1, "-n_refinements"))
+    n_refinements = command_line.next(n_refinements);
+
+  mesh_refinement.uniformly_refine (n_refinements);
 
   // Print information about the mesh to the screen.
   mesh.print_info();

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -162,9 +162,9 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int,
-                                  const unsigned int,
-                                  const unsigned int) const override
+  virtual Real embedding_matrix (const unsigned int,
+                                 const unsigned int,
+                                 const unsigned int) const override
   { libmesh_not_implemented(); return 0.; }
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;

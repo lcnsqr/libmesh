@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -300,7 +300,7 @@ public:
   /**
    * Compute Y = A*X for matrix \p X.
    */
-  virtual void matrix_matrix_mult (SparseMatrix<T> & /*X*/, SparseMatrix<T> & /*Y*/)
+  virtual void matrix_matrix_mult (SparseMatrix<T> & /*X*/, SparseMatrix<T> & /*Y*/, bool /*reuse*/)
   { libmesh_not_implemented(); }
 
   /**
@@ -404,6 +404,9 @@ public:
    * This function creates a matrix called "submatrix" which is defined
    * by the row and column indices given in the "rows" and "cols" entries.
    * Currently this operation is only defined for the PetscMatrix type.
+   * Note: The \p rows and \p cols vectors need to be sorted;
+   *       Use the nosort version below if \p rows and \p cols vectors are not sorted;
+   *       The \p rows and \p cols only contain indices that are owned by this processor.
    */
   virtual void create_submatrix(SparseMatrix<T> & submatrix,
                                 const std::vector<numeric_index_type> & rows,
@@ -413,6 +416,21 @@ public:
                          rows,
                          cols,
                          false); // false means DO NOT REUSE submatrix
+  }
+
+  /**
+   * Similar to the above function, this function creates a \p
+   * submatrix which is defined by the indices given in the \p rows
+   * and \p cols vectors.
+   * Note: Both \p rows and \p cols can be unsorted;
+   *       Use the above function for better efficiency if your indices are sorted;
+   *       \p rows and \p cols can contain indices that are owned by other processors.
+   */
+  virtual void create_submatrix_nosort(SparseMatrix<T> & /*submatrix*/,
+                                         const std::vector<numeric_index_type> & /*rows*/,
+                                         const std::vector<numeric_index_type> & /*cols*/) const
+  {
+    libmesh_not_implemented();
   }
 
   /**

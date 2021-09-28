@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -179,7 +179,15 @@ void EigenSparseMatrix<T>::clear ()
 template <typename T>
 void EigenSparseMatrix<T>::zero ()
 {
+  // This doesn't just zero, it clears the entire non-zero structure!
   _mat.setZero();
+
+  if (this->_sp)
+  {
+    // Re-reserve our non-zero structure
+    const std::vector<numeric_index_type> & n_nz = this->_sp->get_n_nz();
+    _mat.reserve(n_nz);
+  }
 }
 
 

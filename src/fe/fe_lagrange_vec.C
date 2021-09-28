@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -19,9 +19,10 @@
 
 // Local includes
 #include "libmesh/dof_map.h"
+#include "libmesh/elem.h"
+#include "libmesh/enum_to_string.h"
 #include "libmesh/fe.h"
 #include "libmesh/fe_interface.h"
-#include "libmesh/elem.h"
 #include "libmesh/tensor_value.h"
 
 
@@ -61,10 +62,15 @@ void lagrange_vec_nodal_soln(const Elem * elem,
       {
         switch (type)
           {
+          case TRI7:
+            libmesh_assert_equal_to (nodal_soln.size(), 14);
+            nodal_soln[12] = (elem_soln[0] + elem_soln[2] + elem_soln[4])/3.;
+            nodal_soln[13] = (elem_soln[1] + elem_soln[3] + elem_soln[5])/3.;
+            libmesh_fallthrough();
           case TRI6:
             {
+              libmesh_assert (type == TRI7 || nodal_soln.size() == 12);
               libmesh_assert_equal_to (elem_soln.size(), 2*3);
-              libmesh_assert_equal_to (nodal_soln.size(), 2*6);
 
               // node 0 components
               nodal_soln[0] = elem_soln[0];
@@ -147,10 +153,34 @@ void lagrange_vec_nodal_soln(const Elem * elem,
             }
 
 
+          case TET14:
+            libmesh_assert_equal_to (nodal_soln.size(), 3*14);
+
+            // node 10 components
+            nodal_soln[30] = 1./3. * (elem_soln[0] + elem_soln[3] + elem_soln[6]);
+            nodal_soln[31] = 1./3. * (elem_soln[1] + elem_soln[4] + elem_soln[7]);
+            nodal_soln[32] = 1./3. * (elem_soln[2] + elem_soln[5] + elem_soln[8]);
+
+            // node 11 components
+            nodal_soln[33] = 1./3. * (elem_soln[0] + elem_soln[3] + elem_soln[9]);
+            nodal_soln[34] = 1./3. * (elem_soln[1] + elem_soln[4] + elem_soln[10]);
+            nodal_soln[35] = 1./3. * (elem_soln[2] + elem_soln[5] + elem_soln[11]);
+
+            // node 12 components
+            nodal_soln[36] = 1./3. * (elem_soln[3] + elem_soln[6] + elem_soln[9]);
+            nodal_soln[37] = 1./3. * (elem_soln[4] + elem_soln[7] + elem_soln[10]);
+            nodal_soln[38] = 1./3. * (elem_soln[5] + elem_soln[8] + elem_soln[11]);
+
+            // node 13 components
+            nodal_soln[39] = 1./3. * (elem_soln[0] + elem_soln[6] + elem_soln[9]);
+            nodal_soln[40] = 1./3. * (elem_soln[1] + elem_soln[7] + elem_soln[10]);
+            nodal_soln[41] = 1./3. * (elem_soln[2] + elem_soln[8] + elem_soln[11]);
+
+            libmesh_fallthrough();
           case TET10:
             {
+              libmesh_assert (type == TET10 || nodal_soln.size() == 3*10);
               libmesh_assert_equal_to (elem_soln.size(), 3*4);
-              libmesh_assert_equal_to (nodal_soln.size(), 3*10);
 
               // node 0 components
               nodal_soln[0] = elem_soln[0];
@@ -484,6 +514,65 @@ void lagrange_vec_nodal_soln(const Elem * elem,
       {
         switch (type)
           {
+          case TRI7:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 12);
+              libmesh_assert_equal_to (nodal_soln.size(), 14);
+
+              for (int i=0; i != 12; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              nodal_soln[12] = -1./9. * (elem_soln[0] + elem_soln[2] + elem_soln[4])
+                               +4./9. * (elem_soln[6] + elem_soln[8] + elem_soln[10]);
+              nodal_soln[13] = -1./9. * (elem_soln[1] + elem_soln[3] + elem_soln[5])
+                               +4./9. * (elem_soln[7] + elem_soln[9] + elem_soln[11]);
+
+              return;
+            }
+
+          case TET14:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 10*3);
+              libmesh_assert_equal_to (nodal_soln.size(), 14*3);
+
+              for (int i=0; i != 10*3; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              // node 10 components
+              nodal_soln[30] = -1./9. * (elem_soln[0] + elem_soln[3] + elem_soln[6])
+                               +4./9. * (elem_soln[12] + elem_soln[15] + elem_soln[18]);
+              nodal_soln[31] = -1./9. * (elem_soln[1] + elem_soln[4] + elem_soln[7])
+                               +4./9. * (elem_soln[13] + elem_soln[16] + elem_soln[19]);
+              nodal_soln[32] = -1./9. * (elem_soln[2] + elem_soln[5] + elem_soln[8])
+                               +4./9. * (elem_soln[14] + elem_soln[17] + elem_soln[20]);
+
+              // node 11 components
+              nodal_soln[33] = -1./9. * (elem_soln[0] + elem_soln[3] + elem_soln[9])
+                               +4./9. * (elem_soln[12] + elem_soln[21] + elem_soln[24]);
+              nodal_soln[34] = -1./9. * (elem_soln[1] + elem_soln[4] + elem_soln[10])
+                               +4./9. * (elem_soln[13] + elem_soln[22] + elem_soln[25]);
+              nodal_soln[35] = -1./9. * (elem_soln[2] + elem_soln[5] + elem_soln[11])
+                               +4./9. * (elem_soln[14] + elem_soln[23] + elem_soln[26]);
+
+              // node 12 components
+              nodal_soln[36] = -1./9. * (elem_soln[3] + elem_soln[6] + elem_soln[9])
+                               +4./9. * (elem_soln[15] + elem_soln[24] + elem_soln[27]);
+              nodal_soln[37] = -1./9. * (elem_soln[4] + elem_soln[7] + elem_soln[10])
+                               +4./9. * (elem_soln[16] + elem_soln[25] + elem_soln[28]);
+              nodal_soln[38] = -1./9. * (elem_soln[5] + elem_soln[8] + elem_soln[11])
+                               +4./9. * (elem_soln[17] + elem_soln[26] + elem_soln[29]);
+
+              // node 13 components
+              nodal_soln[39] = -1./9. * (elem_soln[0] + elem_soln[6] + elem_soln[9])
+                               +4./9. * (elem_soln[12] + elem_soln[21] + elem_soln[27]);
+              nodal_soln[40] = -1./9. * (elem_soln[1] + elem_soln[7] + elem_soln[10])
+                               +4./9. * (elem_soln[13] + elem_soln[22] + elem_soln[28]);
+              nodal_soln[41] = -1./9. * (elem_soln[2] + elem_soln[8] + elem_soln[11])
+                               +4./9. * (elem_soln[14] + elem_soln[23] + elem_soln[29]);
+
+              return;
+            }
+
           default:
             {
               // By default the element solution _is_ nodal,
@@ -495,11 +584,17 @@ void lagrange_vec_nodal_soln(const Elem * elem,
           }
       }
 
-    default:
+    case THIRD:
       {
+        // By default the element solution _is_ nodal,
+        // so just copy it.
+        nodal_soln = elem_soln;
 
+        return;
       }
 
+    default:
+      libmesh_error_msg("ERROR: Invalid Order " << Utility::enum_to_string(totalorder) << " selected for LAGRANGE FE family!");
     } // switch(totalorder)
 
 }// void lagrange_vec_nodal_soln

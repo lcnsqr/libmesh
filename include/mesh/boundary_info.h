@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -66,6 +66,8 @@ protected:
    * this class.  Therefore the constructor is protected.
    */
   BoundaryInfo (MeshBase & m);
+
+  void set_mesh (MeshBase & m) { _mesh = &m; }
 
 public:
   /**
@@ -344,6 +346,17 @@ public:
   void remove_side (const Elem * elem,
                     const unsigned short int side,
                     const boundary_id_type id);
+
+  /**
+   * Clear sideset information along a stitched mesh interface
+   * @param sideset_id A sideset on one side of the stitched mesh interface
+   * @param other_sideset_id The sideset on the other side of the stitched mesh interface
+   * @param clear_nodeset_data Whether to clear boundary information for the nodes along
+   *                           the stitched mesh interface
+   */
+  void clear_stitched_boundary_side_ids (boundary_id_type sideset_id,
+                                         boundary_id_type other_sideset_id,
+                                         bool clear_nodeset_data = false);
 
   /**
    * Removes all entities (nodes, sides, edges, shellfaces) with boundary
@@ -720,12 +733,17 @@ public:
    * \returns A set of the boundary ids which exist on semilocal parts
    * of the mesh.
    *
-   * DistributedMesh-compatible code may need a set_union or other
-   * manipulations to work with sets of boundary ids which include ids
-   * on remote parts of the mesh.
+   * Code that wishes to access boundary ids on all parts of the mesh, including
+   * non-local parts, should call \p get_global_boundary_ids
    */
   const std::set<boundary_id_type> & get_boundary_ids () const
   { return _boundary_ids; }
+
+  /**
+   * \returns A set of the boundary ids which exist globally
+   * on the mesh. Relies on the mesh being prepared
+   */
+  const std::set<boundary_id_type> & get_global_boundary_ids () const;
 
   /**
    * \returns A reference to the set of the boundary IDs specified on
@@ -838,6 +856,23 @@ public:
    */
   static const boundary_id_type invalid_id;
 
+  /**
+   * \returns A const reference to the nodeset map.
+   */
+  const std::multimap<const Node *, boundary_id_type> & get_nodeset_map () const
+  { return _boundary_node_id; }
+
+  /**
+   * \returns A const reference to the edgeset map.
+   */
+  const std::multimap<const Elem *, std::pair<unsigned short int, boundary_id_type>> & get_edgeset_map () const
+  { return _boundary_edge_id; }
+
+  /**
+   * \returns A const reference to the sideset map.
+   */
+  const std::multimap<const Elem *, std::pair<unsigned short int, boundary_id_type>> & get_sideset_map() const
+  { return _boundary_side_id; }
 
 private:
 
@@ -854,9 +889,9 @@ private:
                       const std::set<subdomain_id_type> & subdomains_relative_to);
 
   /**
-   * The Mesh this boundary info pertains to.
+   * A pointer to the Mesh this boundary info pertains to.
    */
-  MeshBase & _mesh;
+  MeshBase * _mesh;
 
   /**
    * Data structure that maps nodes in the mesh
@@ -895,8 +930,22 @@ private:
    * See _side_boundary_ids, _edge_boundary_ids, _node_boundary_ids, and
    * _shellface_boundary_ids for sets containing IDs for only sides, edges,
    * nodes, and shell faces, respectively.
+   *
+   * This only contains information related to this process's local and ghosted elements
    */
   std::set<boundary_id_type> _boundary_ids;
+
+  /**
+   * A collection of user-specified boundary ids for sides, edges, nodes,
+   * and shell faces.
+   * See _side_boundary_ids, _edge_boundary_ids, _node_boundary_ids, and
+   * _shellface_boundary_ids for sets containing IDs for only sides, edges,
+   * nodes, and shell faces, respectively.
+   *
+   * Unlike \p _boundary_ids, this member should contain boundary ids from across
+   * all processors after the mesh is prepared
+   */
+  std::set<boundary_id_type> _global_boundary_ids;
 
   /**
    * Set of user-specified boundary IDs for sides *only*.
@@ -904,6 +953,8 @@ private:
    * \note \p _boundary_ids is the union of this set, \p
    * _edge_boundary_ids, \p _node_boundary_ids, and \p
    * _shellface_boundary_ids.
+   *
+   * This only contains information related to this process's local and ghosted elements
    */
   std::set<boundary_id_type> _side_boundary_ids;
 
@@ -913,6 +964,8 @@ private:
    *
    * \note \p _boundary_ids is the union of this set, \p _side_boundary_ids,
    * \p _node_boundary_ids, and \p _shellface_boundary_ids.
+   *
+   * This only contains information related to this process's local and ghosted elements
    */
   std::set<boundary_id_type> _edge_boundary_ids;
 
@@ -922,6 +975,8 @@ private:
    * \note \p _boundary_ids is the union of this set, \p
    * _edge_boundary_ids, \p _side_boundary_ids, and \p
    * _shellface_boundary_ids.
+   *
+   * This only contains information related to this process's local and ghosted elements
    */
   std::set<boundary_id_type> _node_boundary_ids;
 
@@ -932,27 +987,35 @@ private:
    * \note \p _boundary_ids is the union of this set, \p
    * _side_boundary_ids, \p _edge_boundary_ids, and \p
    * _node_boundary_ids.
+   *
+   * This only contains information related to this process's local and ghosted elements
    */
   std::set<boundary_id_type> _shellface_boundary_ids;
 
   /**
    * This structure maintains the mapping of named side sets
-   * for file formats that support named blocks.  Currently
-   * this is only implemented for ExodusII
+   * for file formats (Exodus, Gmsh) that support this.
+   *
+   * This data is global in nature, meaning it should be an aggregate of information across
+   * processors
    */
   std::map<boundary_id_type, std::string> _ss_id_to_name;
 
   /**
    * This structure maintains the mapping of named node sets
-   * for file formats that support named blocks.  Currently
-   * this is only implemented for ExodusII
+   * for file formats (Exodus, Gmsh) that support this.
+   *
+   * This data is global in nature, meaning it should be an aggregate of information across
+   * processors
    */
   std::map<boundary_id_type, std::string> _ns_id_to_name;
 
   /**
    * This structure maintains the mapping of named edge sets
-   * for file formats that support named blocks.  Currently
-   * this is only implemented for ExodusII
+   * for file formats (Exodus, Gmsh) that support this.
+   *
+   * This data is global in nature, meaning it should be an aggregate of information across
+   * processors
    */
   std::map<boundary_id_type, std::string> _es_id_to_name;
 };

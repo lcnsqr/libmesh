@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -39,10 +39,11 @@
 #include "timpi/parallel_sync.h"
 
 // C++ includes
-#include <fstream>
+#include <cmath>   // llround
 #include <cstring>
-#include <sstream>
+#include <fstream>
 #include <map>
+#include <sstream>
 
 namespace libMesh
 {
@@ -286,7 +287,40 @@ void ExodusII_IO::read (const std::string & fname)
 
           // Assign extra integer IDs
           for (auto & id : extra_ids)
-            elem->set_extra_integer(id, std::round(elem_ids[id][elem->id()]));
+          {
+            const Real v = elem_ids[id][elem->id()];
+
+            if (v == Real(-1))
+              {
+                elem->set_extra_integer(id, DofObject::invalid_id);
+                continue;
+              }
+
+            const long long iv = std::llround(v);
+
+            // Check if the real number is outside of the range we can
+            // convert exactly
+
+            long long max_representation = 1;
+            max_representation = (max_representation << std::numeric_limits<Real>::digits);
+            libmesh_error_msg_if(iv > max_representation,
+                                 "Error! An element integer value higher than "
+                                 << max_representation
+                                 << " was found! Exodus uses real numbers for storing element "
+                                 " integers, which can only represent integers from 0 to "
+                                 << max_representation
+                                 << ".");
+
+            libmesh_error_msg_if(iv < 0,
+                                 "Error! An element integer value less than -1"
+                                 << " was found! Exodus uses real numbers for storing element "
+                                 " integers, which can only represent integers from 0 to "
+                                 << max_representation
+                                 << ".");
+
+
+            elem->set_extra_integer(id, cast_int<dof_id_type>(iv));
+          }
 
           // Set all the nodes for this element
           for (int k=0; k<exio_helper->num_nodes_per_elem; k++)
@@ -668,8 +702,13 @@ void ExodusII_IO::copy_elemental_solution(System & system,
                                           unsigned int timestep)
 {
   const unsigned int var_num = system.variable_number(system_var_name);
-  libmesh_error_msg_if(system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL),
-                       "Error! Trying to copy elemental solution into a variable that is not of CONSTANT MONOMIAL type.");
+  // Assert that variable is an elemental one.
+  //
+  // NOTE: Currently, this reader is capable of reading only individual components of MONOMIAL_VEC
+  //       types, and each must be written out to its own CONSTANT MONOMIAL variable
+  libmesh_error_msg_if((system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL))
+                       && (system.variable_type(var_num) != FEType(CONSTANT, MONOMIAL_VEC)),
+                       "Error! Trying to copy elemental solution into a variable that is not of CONSTANT MONOMIAL nor CONSTANT MONOMIAL_VEC type.");
 
   const MeshBase & mesh = MeshInput<MeshBase>::mesh();
   const DofMap & dof_map = system.get_dof_map();
@@ -882,10 +921,13 @@ void ExodusII_IO::write_element_data (const EquationSystems & es)
   // also in the _output_variables vector.
   if (_output_variables.size() > 0)
     {
+      // Create a list of CONSTANT MONOMIAL variable names
       std::vector<std::string> monomials;
-      const FEType type(CONSTANT, MONOMIAL);
+      FEType type(CONSTANT, MONOMIAL);
+      es.build_variable_names(monomials, &type);
 
-      // Create a list of monomial variable names
+      // Now concatenate a list of CONSTANT MONOMIAL_VEC variable names
+      type = FEType(CONSTANT, MONOMIAL_VEC);
       es.build_variable_names(monomials, &type);
 
       // Filter that list against the _output_variables list.  Note: if names is still empty after
@@ -996,6 +1038,16 @@ ExodusII_IO::write_element_data_from_discontinuous_nodal_data
   // Get a subset of all variable names that are CONSTANT,
   // MONOMIALs. We treat those slightly differently since they can
   // truly only have a single value per Elem.
+  //
+  // Should the same apply here for CONSTANT MONOMIAL_VECs? [CW]
+  // That is, get rid of 'const' on 'fe_type' and rerun:
+  //    fe_type = FEType(CONSTANT, MONOMIAL_VEC);
+  //    es.build_variable_names(monomial_var_names, &fe_type);
+  // Then, es.find_variable_numbers() can be used without a type
+  // (since we know for sure they're monomials) like:
+  //    var_nums = es.find_variable_numbers(monomial_var_names)
+  // for which the DOF indices for 'var_nums' have to be resolved
+  // manually like in build_elemental_solution_vector()
   std::vector<std::string> monomial_var_names;
   const FEType fe_type(CONSTANT, MONOMIAL);
   es.build_variable_names(monomial_var_names, &fe_type);
@@ -1755,6 +1807,21 @@ const std::vector<std::string> & ExodusII_IO::get_global_var_names()
 {
   exio_helper->read_var_names(ExodusII_IO_Helper::GLOBAL);
   return exio_helper->global_var_names;
+}
+
+const std::vector<int> & ExodusII_IO::get_elem_num_map() const
+{
+  // We could make this function non-const and have it call
+  // exio_helper->read_elem_num_map() before returning a reference...
+  // but the intention is that this will be called some time after a
+  // mesh is read in, in which case it would be doing extra work to
+  // read in the elem_num_map twice.
+  return exio_helper->elem_num_map;
+}
+
+const std::vector<int> & ExodusII_IO::get_node_num_map() const
+{
+  return exio_helper->node_num_map;
 }
 
 ExodusII_IO_Helper & ExodusII_IO::get_exio_helper()

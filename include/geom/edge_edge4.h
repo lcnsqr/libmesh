@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -119,6 +119,16 @@ public:
   virtual bool has_affine_map () const override;
 
   /**
+   * \returns \p true if the scalar quantity j(xi) := dot(dx/dxi(0),
+   * dx/dxi(xi)) is of single sign (either positive or negative)
+   * throughout the element.  For the Edge4, j(xi) is a quadratic
+   * function of xi, so the min/max can occur somewhere on the
+   * interior of the element, and it is therefore not sufficient to
+   * check only the vertex values.
+   */
+  virtual bool has_invertible_map(Real tol) const override;
+
+  /**
    * \returns \p EDGE4.
    */
   virtual ElemType type() const override { return EDGE4; }
@@ -202,16 +212,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[num_children][num_nodes][num_nodes];
+  static const Real _embedding_matrix[num_children][num_nodes][num_nodes];
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;
 

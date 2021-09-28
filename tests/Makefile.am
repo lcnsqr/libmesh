@@ -26,6 +26,7 @@ unit_tests_sources = \
   base/getpot_test.C \
   base/point_neighbor_coupling_test.C \
   base/overlapping_coupling_test.C \
+  base/multi_evaluable_pred_test.C \
   fe/fe_bernstein_test.C \
   fe/fe_clough_test.C \
   fe/fe_hermite_test.C \
@@ -37,11 +38,13 @@ unit_tests_sources = \
   fe/fe_monomial_test.C \
   fe/fe_rational_map.C \
   fe/fe_rational_test.C \
+  fe/fe_side_test.C \
   fe/fe_szabab_test.C \
   fe/fe_test.h \
   fe/fe_xyz_test.C \
   fe/dual_shape_verification_test.C \
   geom/bbox_test.C \
+  geom/edge_test.C \
   geom/elem_test.C \
   geom/node_test.C \
   geom/point_test.C \
@@ -57,6 +60,7 @@ unit_tests_sources = \
   mesh/checkpoint.C \
   mesh/contains_point.C \
   mesh/extra_integers.C \
+  mesh/mesh_assign.C \
   mesh/mesh_generation_test.C \
   mesh/mesh_input.C \
   mesh/mesh_function.C \
@@ -72,6 +76,7 @@ unit_tests_sources = \
   mesh/write_nodeset_data.C \
   mesh/write_edgeset_data.C \
   mesh/write_vec_and_scalar.C \
+  mesh/mesh_collection.C \
   mesh/all_second_order.C \
   numerics/composite_function_test.C \
   numerics/coupling_matrix_test.C \
@@ -89,6 +94,7 @@ unit_tests_sources = \
   numerics/dense_matrix_test.C \
   numerics/petsc_matrix_test.C \
   numerics/diagonal_matrix_test.C \
+  numerics/lumped_mass_matrix_test.C \
   numerics/eigen_sparse_matrix_test.C \
   parallel/message_tag.C \
   parallel/packed_range_test.C \
@@ -122,6 +128,13 @@ unit_tests_sources = \
 datadir = $(install_dir)
 data = meshes/1_quad.bxt.gz \
        meshes/25_quad.bxt.gz \
+       meshes/BlockWithHole_Patch9.bxt.gz \
+       meshes/PlateWithHole_Patch8.bxt.gz \
+       meshes/PressurizedCyl3d_Patch1_8Elem.bxt.gz \
+       meshes/PressurizedCyl_Patch6_256Elem.bxt.gz \
+       meshes/bad_64bit_elem_integers.e \
+       meshes/good_32bit_elem_integers.e \
+       meshes/mesh_assign_test_mesh.xda \
        meshes/shark_tooth_tri6.xda.gz
 
 unit_tests_sources += \
@@ -257,7 +270,28 @@ CLEANFILES = cube_mesh.xda \
              write_edgeset_data.e \
              read_header_test.e \
              output.dat \
-             periodic.e
+             periodic.e \
+             mesh.out.memory.moved.xda \
+             mesh.out.file.moved.xda \
+             repl_with_nodal_soln.nem.1.0 \
+             dist_with_elem_soln.e \
+             dist.e \
+             dist_with_nodal_soln.e \
+             dist_with_nodal_soln.nem.1.0 \
+             dist_with_elem_vec.e \
+             dist_with_single_elem.nem.1.0 \
+             dist_with_elem_soln.nem.1.0 \
+             rep.nem.1.0 \
+             repl_with_elem_soln.nem.1.0 \
+             repl_with_single_elem.nem.1.0 \
+             dist_with_elem_vec.nem.1.0 \
+             repl_with_elem_vec.nem.1.0 \
+             dist.nem.1.0 \
+             repl_with_elem_soln.e \
+             test_nemesis_read.nem.1.0 \
+             rep.e \
+             repl_with_nodal_soln.e \
+             repl_with_elem_vec.e
 
 # need to link any data files for VPATH builds
 if LIBMESH_VPATH_BUILD

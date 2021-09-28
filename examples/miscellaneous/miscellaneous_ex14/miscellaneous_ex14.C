@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,7 +16,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// <h1>Miscellaneous Example 10 - Hydrogen Atom Using Infinite Elements With Imaginary Frequency</h1>
+// <h1>Miscellaneous Example 14 - Hydrogen Atom Using Infinite Elements With Imaginary Frequency</h1>
 // \author Hubert Weissmann
 // \date 2017
 //
@@ -245,7 +245,7 @@ int main (int argc, char** argv)
   //fetch the solver-object used internally to be able to manipulate it using the self-written class
   // to set the transformation
   SlepcEigenSolver<Number> * solver =
-    libmesh_cast_ptr<SlepcEigenSolver<Number>* >( &eig_sys.get_eigen_solver() );
+    cast_ptr<SlepcEigenSolver<Number>* >( &eig_sys.get_eigen_solver() );
 
   // setup of our class @SlepcSolverConfiguration
   SlepcSolverConfiguration ConfigSolver(*solver);
@@ -513,14 +513,11 @@ void assemble_SchroedingerEquation(EquationSystems &es, const std::string &syste
    // loop over INFINITE ELEMENTS
    sd=1;{
       QGauss qrule2 (dim-1, fe_type.default_quadrature_order());
-      UniquePtr<FEBase> face_fe (FEBase::build_InfFE(dim, fe_type));
+      auto face_fe = FEBase::build_InfFE(dim, fe_type);
       face_fe->attach_quadrature_rule (&qrule2);
 
-      MeshBase::const_element_iterator          el  = mesh.active_local_subdomain_elements_begin(sd);
-      const MeshBase::const_element_iterator end_el = mesh.active_local_subdomain_elements_end(sd);
-      for ( ; el != end_el; ++el){
-         const Elem* elem = *el;
-
+      for (const auto & elem : mesh.active_local_subdomain_elements_ptr_range(sd))
+      {
          //dof_map.dof_indices (elem, dof_indices_lm,lm_num);
          dof_map.dof_indices (elem, dof_indices);
 
@@ -562,14 +559,11 @@ void assemble_SchroedingerEquation(EquationSystems &es, const std::string &syste
    // loop over NEIGHBOURS OF INFINITE ELEMENTS
    sd=2; {
       QGauss qrule2 (dim-1, fe_type.default_quadrature_order());
-      UniquePtr<FEBase> face_fe (FEBase::build(dim, fe_type));
+      auto face_fe = FEBase::build(dim, fe_type);
       face_fe->attach_quadrature_rule (&qrule2);
 
-      MeshBase::const_element_iterator       el  = mesh.active_local_subdomain_elements_begin(sd);
-      const MeshBase::const_element_iterator end_el = mesh.active_local_subdomain_elements_end(sd);
-      for ( ; el != end_el; ++el){
-         const Elem* elem = *el;
-
+      for (const auto & elem : mesh.active_local_subdomain_elements_ptr_range(sd))
+      {
          dof_map.dof_indices (elem, dof_indices);
 
 #ifdef DEBUG
@@ -618,7 +612,7 @@ void assemble_SchroedingerEquation(EquationSystems &es, const std::string &syste
             Real tol=0.01*elem->hmin();
             while (found_s==0){
                for(unsigned int n=0; n< elem->n_sides(); n++){
-                  if (relevant_neighbor->close_to_point(elem->side_ptr(n)->centroid(), tol)){
+                  if (relevant_neighbor->close_to_point(elem->side_ptr(n)->vertex_average(), tol)){
                      found_s++;
                      side=n;
 #ifndef DEBUG

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -585,6 +585,11 @@ public:
    */
   void set_calculate_dual(const bool val){calculate_dual = val; }
 
+  /**
+   * set calculate_dual_coeff as needed
+   */
+  void set_calculate_dual_coeff(const bool val){calculate_dual_coeff = val; }
+
 protected:
 
   /**
@@ -619,6 +624,11 @@ protected:
    * Are we calculating dual basis?
    */
   mutable bool calculate_dual;
+
+  /**
+   * Are we calculating the coefficient for the dual basis?
+   */
+  mutable bool calculate_dual_coeff;
 
   /**
    * Are we potentially deliberately calculating nothing?

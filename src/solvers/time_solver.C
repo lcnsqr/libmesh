@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -61,6 +61,8 @@ void TimeSolver::reinit ()
     this->linear_solver()->init((_system.name()+"_").c_str());
   else
     this->linear_solver()->init();
+
+  this->_linear_solver->init_names(_system);
 }
 
 
@@ -86,6 +88,8 @@ void TimeSolver::init_data ()
     this->linear_solver()->init((_system.name()+"_").c_str());
   else
     this->linear_solver()->init();
+
+  this->linear_solver()->init_names(_system);
 }
 
 
@@ -130,12 +134,14 @@ void TimeSolver::integrate_adjoint_sensitivity(const QoISet & /* qois */, const 
   libmesh_not_implemented();
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void TimeSolver::integrate_adjoint_refinement_error_estimate
   (AdjointRefinementEstimator & /* adjoint_refinement_error_estimator */,
    ErrorVector & /* QoI_elementwise_error */)
 {
   libmesh_not_implemented();
 }
+#endif // LIBMESH_ENABLE_AMR
 
 Real TimeSolver::last_completed_timestep_size()
 {

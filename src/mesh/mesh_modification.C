@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -140,6 +140,51 @@ void MeshTools::Modification::distort (MeshBase & mesh,
 #endif
         }
   }
+}
+
+
+
+void MeshTools::Modification::permute_elements(MeshBase & mesh)
+{
+  LOG_SCOPE("permute_elements()", "MeshTools::Modification");
+
+  // We don't yet support doing permute() on a parent element, which
+  // would require us to consistently permute all its children and
+  // give them different local child numbers.
+  unsigned int n_levels = MeshTools::n_levels(mesh);
+  if (n_levels > 1)
+    libmesh_error();
+
+  const unsigned int seed = 123456;
+
+  // seed the random number generator.
+  // We'll loop from 1 to max_elem_id on every processor, even those
+  // that don't have a particular element, so that the pseudorandom
+  // numbers will be the same everywhere.
+  std::srand(seed);
+
+
+  for (auto e_id : make_range(mesh.max_elem_id()))
+    {
+      int my_rand = std::rand();
+
+      Elem * elem = mesh.query_elem_ptr(e_id);
+
+      if (!elem)
+        continue;
+
+      const unsigned int max_permutation = elem->n_permutations();
+      if (!max_permutation)
+        continue;
+
+      const unsigned int perm = my_rand % max_permutation;
+
+      elem->permute(perm);
+    }
+
+  // Neighbor links need to be cleared and reassigned to their new
+  // sides
+  mesh.find_neighbors();
 }
 
 
@@ -917,8 +962,10 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
           case EDGE4:
           case TRI3:
           case TRI6:
+          case TRI7:
           case TET4:
           case TET10:
+          case TET14:
           case INFEDGE2:
             // No way to split infinite quad/prism elements, so
             // hopefully no need to
@@ -1221,7 +1268,7 @@ void MeshTools::Modification::smooth (MeshBase & mesh,
                             /*
                              * The value from the embedding matrix
                              */
-                            const float em_val = parent->embedding_matrix(c,nc,n);
+                            const Real em_val = parent->embedding_matrix(c,nc,n);
 
                             if (em_val != 0.)
                               point.add_scaled (parent->point(n), em_val);

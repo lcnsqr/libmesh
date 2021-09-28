@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -146,41 +146,41 @@ bool Hex27::has_affine_map() const
 {
   // Make sure x-edge endpoints are affine
   Point v = this->point(1) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(2) - this->point(3)) ||
-      !v.relative_fuzzy_equals(this->point(5) - this->point(4)) ||
-      !v.relative_fuzzy_equals(this->point(6) - this->point(7)))
+  if (!v.relative_fuzzy_equals(this->point(2) - this->point(3), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(5) - this->point(4), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(6) - this->point(7), affine_tol))
     return false;
   // Make sure x-edges are straight
   // and x-face and center points are centered
   v /= 2;
-  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(10) - this->point(3)) ||
-      !v.relative_fuzzy_equals(this->point(16) - this->point(4)) ||
-      !v.relative_fuzzy_equals(this->point(18) - this->point(7)) ||
-      !v.relative_fuzzy_equals(this->point(20) - this->point(11)) ||
-      !v.relative_fuzzy_equals(this->point(21) - this->point(12)) ||
-      !v.relative_fuzzy_equals(this->point(23) - this->point(15)) ||
-      !v.relative_fuzzy_equals(this->point(25) - this->point(19)) ||
-      !v.relative_fuzzy_equals(this->point(26) - this->point(24)))
+  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(10) - this->point(3), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(16) - this->point(4), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(18) - this->point(7), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(20) - this->point(11), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(21) - this->point(12), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(23) - this->point(15), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(25) - this->point(19), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(26) - this->point(24), affine_tol))
     return false;
   // Make sure xz-faces are identical parallelograms
   v = this->point(4) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(7) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(7) - this->point(3), affine_tol))
     return false;
   v /= 2;
-  if (!v.relative_fuzzy_equals(this->point(12) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(13) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(14) - this->point(2)) ||
-      !v.relative_fuzzy_equals(this->point(15) - this->point(3)) ||
-      !v.relative_fuzzy_equals(this->point(22) - this->point(9)) ||
-      !v.relative_fuzzy_equals(this->point(24) - this->point(11)))
+  if (!v.relative_fuzzy_equals(this->point(12) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(13) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(14) - this->point(2), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(15) - this->point(3), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(22) - this->point(9), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(24) - this->point(11), affine_tol))
     return false;
   // Make sure y-edges are straight
   v = (this->point(3) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(11) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(9) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(17) - this->point(5)) ||
-      !v.relative_fuzzy_equals(this->point(19) - this->point(4)))
+  if (!v.relative_fuzzy_equals(this->point(11) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(9) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(17) - this->point(5), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(19) - this->point(4), affine_tol))
     return false;
   // If all the above checks out, the map is affine
   return true;
@@ -279,9 +279,14 @@ void Hex27::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Hex27::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge3,Hex27>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge3,Hex27>>(this,i);
+
+
+void Hex27::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Hex27>(edge, i, EDGE3);
 }
 
 
@@ -919,7 +924,7 @@ Real Hex27::volume () const
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Hex27::_embedding_matrix[Hex27::num_children][Hex27::num_nodes][Hex27::num_nodes] =
+const Real Hex27::_embedding_matrix[Hex27::num_children][Hex27::num_nodes][Hex27::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -1180,5 +1185,85 @@ const float Hex27::_embedding_matrix[Hex27::num_children][Hex27::num_nodes][Hex2
   };
 
 #endif
+
+
+void
+Hex27::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 24);
+  const unsigned int side = perm_num % 6;
+  const unsigned int rotate = perm_num / 6;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap4nodes(0,1,2,3);
+      swap4nodes(4,5,6,7);
+      swap4nodes(8,9,10,11);
+      swap4nodes(12,13,14,15);
+      swap4nodes(16,17,18,19);
+      swap4nodes(21,22,23,24);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap4nodes(3,7,4,0);
+    swap4nodes(11,15,19,12);
+    swap4nodes(10,18,16,8);
+    swap4nodes(2,6,5,1);
+    swap4nodes(9,14,17,13);
+    swap4nodes(20,23,25,21);
+    break;
+  case 2:
+    swap4nodes(0,4,5,1);
+    swap4nodes(8,12,16,13);
+    swap4nodes(3,7,6,2);
+    swap4nodes(10,15,18,14);
+    swap4nodes(11,19,17,9);
+    swap4nodes(20,24,25,22);
+    break;
+  case 3:
+    swap4nodes(0,4,7,3);
+    swap4nodes(12,19,15,11);
+    swap4nodes(8,16,18,10);
+    swap4nodes(1,5,6,2);
+    swap4nodes(13,17,14,9);
+    swap4nodes(20,21,25,23);
+    break;
+  case 4:
+    swap4nodes(1,5,4,0);
+    swap4nodes(8,13,16,12);
+    swap4nodes(9,17,19,11);
+    swap4nodes(2,6,7,3);
+    swap4nodes(10,14,18,15);
+    swap4nodes(20,22,25,24);
+    break;
+  case 5:
+    swap2nodes(0,7);
+    swap2nodes(8,18);
+    swap2nodes(1,6);
+    swap2nodes(2,5);
+    swap2nodes(10,16);
+    swap2nodes(3,4);
+    swap2nodes(11,19);
+    swap2nodes(12,15);
+    swap2nodes(9,17);
+    swap2nodes(13,14);
+    swap2nodes(20,25);
+    swap2nodes(21,23);
+    break;
+  default:
+    libmesh_error();
+  }
+}
+
+
+unsigned int Hex27::center_node_on_side(const unsigned short side) const
+{
+  libmesh_assert_less (side, Hex27::num_sides);
+  return side + 20;
+}
+
 
 } // namespace libMesh

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -80,6 +80,7 @@ namespace libMesh
 template <typename T>
 PetscMatrix<T>::PetscMatrix(const Parallel::Communicator & comm_in) :
   SparseMatrix<T>(comm_in),
+  _mat(nullptr),
   _destroy_mat_on_exit(true),
   _mat_type(AIJ)
 {}
@@ -725,7 +726,7 @@ void PetscMatrix<T>::print_personal(std::ostream & os) const
   // Print to screen if ostream is stdout
   if (os.rdbuf() == std::cout.rdbuf())
     {
-      ierr = MatView(_mat, PETSC_VIEWER_STDOUT_SELF);
+      ierr = MatView(_mat, NULL);
       LIBMESH_CHKERR(ierr);
     }
 
@@ -925,6 +926,78 @@ void PetscMatrix<T>::_get_submatrix(SparseMatrix<T> & submatrix,
   petsc_submatrix->close();
 }
 
+template <typename T>
+void PetscMatrix<T>::create_submatrix_nosort(SparseMatrix<T> & submatrix,
+                                             const std::vector<numeric_index_type> & rows,
+                                             const std::vector<numeric_index_type> & cols) const
+{
+  if (!this->closed())
+    {
+      libmesh_deprecated();
+      libmesh_warning("The matrix must be assembled before calling PetscMatrix::create_submatrix_nosort().\n"
+                      "Please update your code, as this warning will become an error in a future release.");
+      const_cast<PetscMatrix<T> *>(this)->close();
+    }
+
+  // Make sure the SparseMatrix passed in is really a PetscMatrix
+  PetscMatrix<T> * petsc_submatrix = cast_ptr<PetscMatrix<T> *>(&submatrix);
+
+  PetscErrorCode ierr=0;
+
+  ierr=MatZeroEntries(petsc_submatrix->_mat);
+  LIBMESH_CHKERR(ierr);
+
+  PetscInt pc_ncols = 0;
+  const PetscInt * pc_cols;
+  const PetscScalar * pc_vals;
+
+  // // data for creating the submatrix
+  std::vector<PetscInt> sub_cols;
+  std::vector<PetscScalar> sub_vals;
+
+  for (auto i : index_range(rows))
+  {
+    PetscInt sub_rid[] = {static_cast<PetscInt>(i)};
+    PetscInt rid = static_cast<PetscInt>(rows[i]);
+    // only get value from local rows, and set values to the corresponding columns in the submatrix
+    if (rows[i]>= this->row_start() && rows[i]< this->row_stop())
+    {
+      // get one row of data from the original matrix
+      ierr = MatGetRow(_mat, rid, &pc_ncols, &pc_cols, &pc_vals);
+      LIBMESH_CHKERR(ierr);
+      // extract data from certain cols, save the indices and entries sub_cols and sub_vals
+      for (auto j : index_range(cols))
+      {
+        for (unsigned int idx = 0; idx< static_cast<unsigned int>(pc_ncols); idx++)
+        {
+          if (pc_cols[idx] == static_cast<PetscInt>(cols[j]))
+            {
+              sub_cols.push_back(static_cast<PetscInt>(j));
+              sub_vals.push_back(pc_vals[idx]);
+            }
+        }
+      }
+      // set values
+      ierr = MatSetValues(petsc_submatrix->_mat,
+                          1,
+                          sub_rid,
+                          static_cast<PetscInt>(sub_vals.size()),
+                          sub_cols.data(),
+                          sub_vals.data(),
+                          INSERT_VALUES);
+      LIBMESH_CHKERR(ierr);
+      ierr = MatRestoreRow(_mat, rid, &pc_ncols, &pc_cols, &pc_vals);
+      LIBMESH_CHKERR(ierr);
+      // clear data for this row
+      sub_cols.clear();
+      sub_vals.clear();
+    }
+  }
+  MatAssemblyBeginEnd(petsc_submatrix->comm(), petsc_submatrix->_mat, MAT_FINAL_ASSEMBLY);
+  // Specify that the new submatrix is initialized and close it.
+  petsc_submatrix->_is_initialized = true;
+  petsc_submatrix->close();
+}
 
 
 template <typename T>
@@ -1176,14 +1249,13 @@ void PetscMatrix<T>::add (const T a_in, const SparseMatrix<T> & X_in)
 
 
 template <typename T>
-void PetscMatrix<T>::matrix_matrix_mult (SparseMatrix<T> & X_in, SparseMatrix<T> & Y_out)
+void PetscMatrix<T>::matrix_matrix_mult (SparseMatrix<T> & X_in, SparseMatrix<T> & Y_out, bool reuse)
 {
   libmesh_assert (this->initialized());
 
-  // sanity check.
+  // sanity check
+  // we do not check the Y_out size here as we will initialize & close it at the end
   libmesh_assert_equal_to (this->n(), X_in.m());
-  libmesh_assert_equal_to (this->m(), Y_out.m());
-  libmesh_assert_equal_to (X_in.n(), Y_out.n());
 
   const PetscMatrix<T> * X = cast_ptr<const PetscMatrix<T> *> (&X_in);
   PetscMatrix<T> * Y = cast_ptr<PetscMatrix<T> *> (&Y_out);
@@ -1195,8 +1267,20 @@ void PetscMatrix<T>::matrix_matrix_mult (SparseMatrix<T> & X_in, SparseMatrix<T>
 
   semiparallel_only();
 
-  ierr = MatMatMult(_mat, X->_mat, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Y->_mat);
-  LIBMESH_CHKERR(ierr);
+  if (reuse)
+  {
+    ierr = MatMatMult(_mat, X->_mat, MAT_REUSE_MATRIX, PETSC_DEFAULT, &Y->_mat);
+    LIBMESH_CHKERR(ierr);
+  }
+  else
+  {
+    Y->clear();
+    ierr = MatMatMult(_mat, X->_mat, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &Y->_mat);
+    LIBMESH_CHKERR(ierr);
+  }
+  // Specify that the new matrix is initialized
+  // We do not close it here as `MatMatMult` ensures Y being closed
+  Y->_is_initialized = true;
 }
 
 template <typename T>
@@ -1206,8 +1290,10 @@ PetscMatrix<T>::add_sparse_matrix (const SparseMatrix<T> & spm,
                                    const std::map<numeric_index_type, numeric_index_type> & col_ltog,
                                    const T scalar)
 {
-  libmesh_assert_equal_to(spm.m(), row_ltog.size());
-  libmesh_assert_equal_to(spm.n(), col_ltog.size());
+  // size of spm is usually greater than row_ltog and col_ltog in parallel as the indices are owned by the processor
+  // also, we should allow adding certain parts of spm to _mat
+  libmesh_assert_greater_equal(spm.m(), row_ltog.size());
+  libmesh_assert_greater_equal(spm.n(), col_ltog.size());
 
   // make sure matrix has larger size than spm
   libmesh_assert_greater_equal(this->m(), spm.m());

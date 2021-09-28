@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -56,6 +56,7 @@
 #include "libmesh/nonlinear_implicit_system.h"
 #include "libmesh/petsc_macro.h"
 #include "libmesh/enum_solver_package.h"
+#include "libmesh/mesh_refinement.h"
 
 // Local includes
 #include "linear_elasticity_with_contact.h"
@@ -83,6 +84,8 @@ int main (int argc, char ** argv)
   libmesh_example_requires(libMesh::default_solver_package() == PETSC_SOLVERS, "--enable-petsc");
 
   GetPot infile("systems_of_equations_ex8.in");
+  infile.parse_command_line(argc,argv);
+
   const std::string approx_order = infile("approx_order", "FIRST");
   const std::string fe_family = infile("fe_family", "LAGRANGE");
 
@@ -98,6 +101,15 @@ int main (int argc, char ** argv)
   // This example code has not been written to cope with a distributed mesh
   ReplicatedMesh mesh(init.comm());
   mesh.read("systems_of_equations_ex8.exo");
+
+  const unsigned int n_refinements = infile("n_refinements", 0);
+  // Skip adaptive runs on a non-adaptive libMesh build
+#ifndef LIBMESH_ENABLE_AMR
+  libmesh_example_requires(n_refinements==0, "--enable-amr");
+#else
+  MeshRefinement mesh_refinement(mesh);
+  mesh_refinement.uniformly_refine(n_refinements);
+#endif
 
   mesh.print_info();
 
@@ -242,6 +254,10 @@ int main (int argc, char ** argv)
 
       current_max_gap_function = std::max(std::abs(least_gap_fn), std::abs(max_gap_fn));
     }
+
+  // Enforcing constraints imposes the non-zero Dirichlet constraints on the solution.
+  system.get_dof_map().enforce_constraints_exactly(system);
+  system.update();
 
   libMesh::out << "Computing stresses..." << std::endl;
 

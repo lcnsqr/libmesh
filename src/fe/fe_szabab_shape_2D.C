@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -15,22 +15,20 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-
-// C++ includes
-#include <cstdlib> // *must* precede <cmath> for proper std:abs() on PGI, Sun Studio CC
-#include <cmath> // for std::sqrt
-
-
 // Local includes
 #include "libmesh/libmesh_config.h"
 
 #ifdef LIBMESH_ENABLE_HIGHER_ORDER_SHAPES
 
+// libmesh includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/utility.h"
+#include "libmesh/enum_to_string.h"
 
+// C++ includes
+#include <cstdlib> // *must* precede <cmath> for proper std:abs() on PGI, Sun Studio CC
+#include <cmath> // for std::sqrt
 
 // Anonymous namespace to hold static std::sqrt values
 namespace
@@ -82,6 +80,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             // Szabo-Babuska shape functions on the triangle.
           case TRI3:
           case TRI6:
+          case TRI7:
             {
               const Real l1 = 1-p(0)-p(1);
               const Real l2 = p(0);
@@ -126,7 +125,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -139,6 +138,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
 
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               Real l1 = 1-p(0)-p(1);
               Real l2 = p(0);
@@ -225,7 +225,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -239,6 +239,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
           {
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               Real l1 = 1-p(0)-p(1);
               Real l2 = p(0);
@@ -327,7 +328,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -341,6 +342,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
           {
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               Real l1 = 1-p(0)-p(1);
               Real l2 = p(0);
@@ -395,7 +397,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
                 default:
                   libmesh_error_msg("Invalid i = " << i);
                 }
-            } // case TRI6
+            } // case TRI6/TRI7
 
             // Szabo-Babuska shape functions on the quadrilateral.
           case QUAD8:
@@ -443,7 +445,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             } // case QUAD8/QUAD9
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
 
           } // switch type
 
@@ -456,6 +458,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
           {
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               Real l1 = 1-p(0)-p(1);
               Real l2 = p(0);
@@ -520,7 +523,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
                 default:
                   libmesh_error_msg("Invalid i = " << i);
                 }
-            } // case TRI6
+            } // case TRI6/TRI7
 
             // Szabo-Babuska shape functions on the quadrilateral.
           case QUAD8:
@@ -568,7 +571,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             } // case QUAD8/QUAD9
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
 
           } // switch type
 
@@ -582,6 +585,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
           {
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
 
               Real l1 = 1-p(0)-p(1);
@@ -657,7 +661,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
                 default:
                   libmesh_error_msg("Invalid i = " << i);
                 }
-            } // case TRI6
+            } // case TRI6/TRI7
 
             // Szabo-Babuska shape functions on the quadrilateral.
           case QUAD8:
@@ -709,7 +713,7 @@ Real FE<2,SZABAB>::shape(const Elem * elem,
             } // case QUAD8/QUAD9
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
 
           } // switch type
 
@@ -779,6 +783,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             // Szabo-Babuska shape functions on the triangle.
           case TRI3:
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -848,7 +853,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -861,6 +866,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
           {
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -952,7 +958,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -967,6 +973,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
 
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -1059,7 +1066,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -1075,6 +1082,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
 
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -1169,7 +1177,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -1183,6 +1191,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
 
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -1277,7 +1286,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 
@@ -1291,6 +1300,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
 
             // Szabo-Babuska shape functions on the triangle.
           case TRI6:
+          case TRI7:
             {
               // Here we use finite differences to compute the derivatives!
               const Real eps = 1.e-6;
@@ -1389,7 +1399,7 @@ Real FE<2,SZABAB>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("Invalid element type = " << type);
+            libmesh_error_msg("Invalid element type = " << Utility::enum_to_string(type));
           }
       }
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -55,7 +55,7 @@ const unsigned int InfQuad4::side_nodes_map[InfQuad4::num_sides][InfQuad4::nodes
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float InfQuad4::_embedding_matrix[InfQuad4::num_children][InfQuad4::num_nodes][InfQuad4::num_nodes] =
+const Real InfQuad4::_embedding_matrix[InfQuad4::num_children][InfQuad4::num_nodes][InfQuad4::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -193,6 +193,8 @@ std::unique_ptr<Elem> InfQuad4::build_side_ptr (const unsigned int i,
   std::unique_ptr<Elem> edge;
   if (proxy)
     {
+#ifdef LIBMESH_ENABLE_DEPRECATED
+      libmesh_deprecated();
       switch (i)
         {
           // base
@@ -213,8 +215,10 @@ std::unique_ptr<Elem> InfQuad4::build_side_ptr (const unsigned int i,
         default:
           libmesh_error_msg("Invalid side i = " << i);
         }
+#else
+      libmesh_error();
+#endif // LIBMESH_ENABLE_DEPRECATED
     }
-
   else
     {
       switch (i)
@@ -247,6 +251,11 @@ std::unique_ptr<Elem> InfQuad4::build_side_ptr (const unsigned int i,
 #endif
     edge->set_parent(nullptr);
   edge->set_interior_parent(this);
+
+  edge->subdomain_id() = this->subdomain_id();
+#ifdef LIBMESH_ENABLE_AMR
+  edge->set_p_level(this->p_level());
+#endif
 
   return edge;
 }

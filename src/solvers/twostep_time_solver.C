@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -380,6 +380,7 @@ void TwostepTimeSolver::integrate_adjoint_sensitivity(const QoISet & qois, const
      sensitivities[i][j] = sensitivities_first_half[i][j] + sensitivities_second_half[i][j];
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void TwostepTimeSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & adjoint_refinement_error_estimator, ErrorVector & QoI_elementwise_error)
 {
   // We use a numerical integration scheme consistent with the theta used for the timesolver.
@@ -431,5 +432,6 @@ void TwostepTimeSolver::integrate_adjoint_refinement_error_estimate(AdjointRefin
     }
   }
 }
+#endif // LIBMESH_ENABLE_AMR
 
 } // namespace libMesh

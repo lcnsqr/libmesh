@@ -24,6 +24,9 @@
 #include "libmesh/libmesh_logging.h"
 #include "libmesh/utility.h"
 #include "libmesh/rb_parameters.h"
+#include "libmesh/system.h"
+#include "libmesh/elem.h"
+#include "libmesh/fem_context.h"
 
 namespace libMesh
 {
@@ -41,10 +44,13 @@ Number
 RBParametrizedFunction::evaluate_comp(const RBParameters & mu,
                                       unsigned int comp,
                                       const Point & xyz,
+                                      dof_id_type elem_id,
+                                      unsigned int qp,
                                       subdomain_id_type subdomain_id,
-                                      const std::vector<Point> & xyz_perturb)
+                                      const std::vector<Point> & xyz_perturb,
+                                      const std::vector<Real> & phi_i_qp)
 {
-  std::vector<Number> values = evaluate(mu, xyz, subdomain_id, xyz_perturb);
+  std::vector<Number> values = evaluate(mu, xyz, elem_id, qp, subdomain_id, xyz_perturb, phi_i_qp);
 
   libmesh_error_msg_if(comp >= values.size(), "Error: Invalid value of comp");
 
@@ -53,8 +59,11 @@ RBParametrizedFunction::evaluate_comp(const RBParameters & mu,
 
 void RBParametrizedFunction::vectorized_evaluate(const std::vector<RBParameters> & mus,
                                                  const std::vector<Point> & all_xyz,
+                                                 const std::vector<dof_id_type> & elem_ids,
+                                                 const std::vector<unsigned int> & qps,
                                                  const std::vector<subdomain_id_type> & sbd_ids,
                                                  const std::vector<std::vector<Point>> & all_xyz_perturb,
+                                                 const std::vector<std::vector<Real>> & phi_i_qp,
                                                  std::vector<std::vector<std::vector<Number>>> & output)
 {
   LOG_SCOPE("vectorized_evaluate()", "RBParametrizedFunction");
@@ -78,15 +87,21 @@ void RBParametrizedFunction::vectorized_evaluate(const std::vector<RBParameters>
             {
               output[mu_index][point_index] = evaluate(mus[mu_index],
                                                        all_xyz[point_index],
+                                                       elem_ids[point_index],
+                                                       qps[point_index],
                                                        sbd_ids[point_index],
-                                                       all_xyz_perturb[point_index]);
+                                                       all_xyz_perturb[point_index],
+                                                       phi_i_qp[point_index]);
             }
           else
             {
               output[mu_index][point_index] = evaluate(mus[mu_index],
                                                        all_xyz[point_index],
+                                                       elem_ids[point_index],
+                                                       qps[point_index],
                                                        sbd_ids[point_index],
-                                                       empty_perturbs);
+                                                       empty_perturbs,
+                                                       phi_i_qp[point_index]);
             }
         }
     }
@@ -95,7 +110,8 @@ void RBParametrizedFunction::vectorized_evaluate(const std::vector<RBParameters>
 void RBParametrizedFunction::preevaluate_parametrized_function_on_mesh(const RBParameters & mu,
                                                                        const std::unordered_map<dof_id_type, std::vector<Point>> & all_xyz,
                                                                        const std::unordered_map<dof_id_type, subdomain_id_type> & sbd_ids,
-                                                                       const std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > & all_xyz_perturb)
+                                                                       const std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > & all_xyz_perturb,
+                                                                       const System & sys)
 {
   mesh_to_preevaluated_values_map.clear();
 
@@ -107,11 +123,22 @@ void RBParametrizedFunction::preevaluate_parametrized_function_on_mesh(const RBP
   }
 
   std::vector<Point> all_xyz_vec(n_points);
+  std::vector<dof_id_type> elem_ids_vec(n_points);
+  std::vector<unsigned int> qps_vec(n_points);
   std::vector<subdomain_id_type> sbd_ids_vec(n_points);
   std::vector<std::vector<Point>> all_xyz_perturb_vec(n_points);
+  std::vector<std::vector<Real>> phi_i_qp_vec(n_points);
 
   // Empty vector to be used when xyz perturbations are not required
   std::vector<Point> empty_perturbs;
+
+  // In order to compute phi_i_qp, we initialize a FEMContext
+  FEMContext con(sys);
+  for (auto dim : con.elem_dimensions())
+    {
+      auto fe = con.get_element_fe(/*var=*/0, dim);
+      fe->get_phi();
+    }
 
   unsigned int counter = 0;
   for (const auto & xyz_pair : all_xyz)
@@ -125,12 +152,27 @@ void RBParametrizedFunction::preevaluate_parametrized_function_on_mesh(const RBP
       auto n_qp = xyz_vec.size();
       mesh_to_preevaluated_values_map[elem_id].resize(n_qp);
 
-      for (unsigned int qp : index_range(xyz_vec))
+      // Also initialize phi in order to compute phi_i_qp
+      const Elem & elem_ref = sys.get_mesh().elem_ref(elem_id);
+      con.pre_fe_reinit(sys, &elem_ref);
+
+      auto elem_fe = con.get_element_fe(/*var=*/0, elem_ref.dim());
+      const std::vector<std::vector<Real>> & phi = elem_fe->get_phi();
+
+      elem_fe->reinit(&elem_ref);
+
+      for (auto qp : index_range(xyz_vec))
         {
           mesh_to_preevaluated_values_map[elem_id][qp] = counter;
 
           all_xyz_vec[counter] = xyz_vec[qp];
+          elem_ids_vec[counter] = elem_id;
+          qps_vec[counter] = qp;
           sbd_ids_vec[counter] = subdomain_id;
+
+          phi_i_qp_vec[counter].resize(phi.size());
+          for(auto i : index_range(phi))
+            phi_i_qp_vec[counter][i] = phi[i][qp];
 
           if (requires_xyz_perturbations)
             {
@@ -152,8 +194,11 @@ void RBParametrizedFunction::preevaluate_parametrized_function_on_mesh(const RBP
   std::vector<RBParameters> mus {mu};
   vectorized_evaluate(mus,
                       all_xyz_vec,
+                      elem_ids_vec,
+                      qps_vec,
                       sbd_ids_vec,
                       all_xyz_perturb_vec,
+                      phi_i_qp_vec,
                       preevaluated_values);
 }
 
@@ -176,6 +221,21 @@ Number RBParametrizedFunction::lookup_preevaluated_value_on_mesh(unsigned int co
 void RBParametrizedFunction::initialize_lookup_table()
 {
   // No-op by default, override in subclasses as needed
+}
+
+Number RBParametrizedFunction::get_parameter_independent_data(const std::string & property_name,
+                                                              subdomain_id_type sbd_id) const
+{
+  return libmesh_map_find(libmesh_map_find(_parameter_independent_data, property_name), sbd_id);
+}
+
+std::vector<std::vector<Number>> RBParametrizedFunction::evaluate_at_observation_points(const RBParameters & /*mu*/,
+                                                                                        const std::vector<Point> & /*observation_points*/,
+                                                                                        const std::vector<dof_id_type> & /*elem_ids*/,
+                                                                                        const std::vector<subdomain_id_type> & /*sbd_ids*/)
+{
+  // return an empty vector by default, override this in subclasses if necessary
+  return std::vector<std::vector<Number>>();
 }
 
 }

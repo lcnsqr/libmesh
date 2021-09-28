@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -57,6 +57,7 @@
 #include "libmesh/enum_solver_package.h"
 #include "libmesh/enum_solver_type.h"
 #include "libmesh/parallel.h"
+#include "libmesh/mesh_refinement.h"
 
 // Eigen includes
 #ifdef LIBMESH_HAVE_EIGEN
@@ -140,6 +141,20 @@ int main (int argc, char ** argv)
   }
   Mesh mesh (init.comm(), 3);
   mesh.read("cylinder.xdr");
+
+  // Get the number of mesh refinements from the command line
+  int n_refinements = 0;
+  if (command_line.search(1, "-n_refinements"))
+    n_refinements = command_line.next(n_refinements);
+
+  // Refine the mesh if requested
+  // Skip adaptive runs on a non-adaptive libMesh build
+#ifndef LIBMESH_ENABLE_AMR
+  libmesh_example_requires(n_refinements==0, "--enable-amr");
+#else
+  MeshRefinement mesh_refinement (mesh);
+  mesh_refinement.uniformly_refine (n_refinements);
+#endif
 
   // Print information about the mesh to the screen.
   mesh.print_info();

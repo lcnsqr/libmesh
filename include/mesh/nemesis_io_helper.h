@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -46,6 +46,9 @@ extern "C" {
   // to get ne_nemesisI.h to properly include the typedefs
 #  ifdef EXODUS_II_HDR
 #    undef EXODUS_II_HDR
+#  endif
+#  ifdef EXODUSII_H
+#    undef EXODUSII_H
 #  endif
 #  include "ne_nemesisI.h"
 }

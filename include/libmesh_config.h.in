@@ -138,6 +138,10 @@
 /* Flag indicating if the library should be built with infinite elements */
 #undef ENABLE_INFINITE_ELEMENTS
 
+/* Flag indicating whether the library will use the (experimental)
+   Nanoflann-based PointLocator */
+#undef ENABLE_NANOFLANN_POINTLOCATOR
+
 /* Flag indicating if the library should be built with node constraints
    support */
 #undef ENABLE_NODE_CONSTRAINTS
@@ -319,8 +323,14 @@
 /* Flag indicating whether compiler supports variadic templates */
 #undef HAVE_CXX11_VARIADIC_TEMPLATES
 
+/* define if the compiler supports basic C++14 syntax */
+#undef HAVE_CXX14
+
 /* Flag indicating whether compiler supports std::make_unique */
 #undef HAVE_CXX14_MAKE_UNIQUE
+
+/* define if the compiler supports basic C++17 syntax */
+#undef HAVE_CXX17
 
 /* Flag indicating whether compiler supports fallthrough attribute */
 #undef HAVE_CXX17_FALLTHROUGH_ATTRIBUTE
@@ -612,6 +622,9 @@
 
 /* libMesh major version number */
 #undef MAJOR_VERSION
+
+/* size of mapvector chunks */
+#undef MAPVECTOR_CHUNK_SIZE
 
 /* libMesh micro version number */
 #undef MICRO_VERSION

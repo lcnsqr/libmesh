@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -121,6 +121,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -130,6 +131,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -167,6 +169,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -176,6 +179,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -213,6 +217,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -222,6 +227,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -258,6 +264,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -267,6 +274,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -302,6 +310,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -311,6 +320,7 @@ unsigned int xyz_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -364,6 +374,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -374,6 +385,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
             // 3D linears have 4 DOFs per element
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -413,6 +425,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -423,6 +436,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
             // 3D quadratics have 10 DOFs per element
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -460,6 +474,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -469,6 +484,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -506,6 +522,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -515,6 +532,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -549,6 +567,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -558,6 +577,7 @@ unsigned int xyz_n_dofs_per_elem(const ElemType t,
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -594,17 +614,10 @@ void FEXYZ<Dim>::init_shape_functions(const std::vector<Point> & qp,
                                       const Elem * libmesh_dbg_var(elem))
 {
   libmesh_assert(elem);
-  this->calculations_started = true;
 
-  // If the user forgot to request anything, we'll be safe and
-  // calculate everything:
-#ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
-  if (!this->calculate_phi && !this->calculate_dphi && !this->calculate_d2phi)
-    this->calculate_phi = this->calculate_dphi = this->calculate_d2phi = true;
-#else
-  if (!this->calculate_phi && !this->calculate_dphi)
-    this->calculate_phi = this->calculate_dphi = true;
-#endif // LIBMESH_ENABLE_SECOND_DERIVATIVES
+  // FIXME: Is this redundant here? Who's calling init_shape_functions
+  // from code that hasn't already done a determine_calculations()?
+  this->determine_calculations();
 
   // Start logging the shape function initialization
   LOG_SCOPE("init_shape_functions()", "FE");

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -178,7 +178,7 @@ Node * MeshRefinement::add_node(Elem & parent,
   for (auto n : parent.node_index_range())
     {
       // The value from the embedding matrix
-      const float em_val = parent.embedding_matrix(child,node,n);
+      const Real em_val = parent.embedding_matrix(child,node,n);
 
       if (em_val != 0.)
         {
@@ -354,7 +354,7 @@ void MeshRefinement::update_nodes_map ()
 
 
 
-bool MeshRefinement::test_level_one (bool libmesh_dbg_var(libmesh_assert_pass))
+bool MeshRefinement::test_level_one (bool libmesh_dbg_var(libmesh_assert_pass)) const
 {
   // This function must be run on all processors at once
   parallel_object_only();
@@ -429,7 +429,7 @@ bool MeshRefinement::test_level_one (bool libmesh_dbg_var(libmesh_assert_pass))
 
 
 
-bool MeshRefinement::test_unflagged (bool libmesh_dbg_var(libmesh_assert_pass))
+bool MeshRefinement::test_unflagged (bool libmesh_dbg_var(libmesh_assert_pass)) const
 {
   // This function must be run on all processors at once
   parallel_object_only();
@@ -1794,7 +1794,7 @@ void MeshRefinement::uniformly_coarsen (unsigned int n)
 
 Elem * MeshRefinement::topological_neighbor(Elem * elem,
                                             const PointLocatorBase * point_locator,
-                                            const unsigned int side)
+                                            const unsigned int side) const
 {
 #ifdef LIBMESH_ENABLE_PERIODIC
   if (_periodic_boundaries && !_periodic_boundaries->empty())
@@ -1810,7 +1810,7 @@ Elem * MeshRefinement::topological_neighbor(Elem * elem,
 
 bool MeshRefinement::has_topological_neighbor(const Elem * elem,
                                               const PointLocatorBase * point_locator,
-                                              const Elem * neighbor)
+                                              const Elem * neighbor) const
 {
 #ifdef LIBMESH_ENABLE_PERIODIC
   if (_periodic_boundaries && !_periodic_boundaries->empty())

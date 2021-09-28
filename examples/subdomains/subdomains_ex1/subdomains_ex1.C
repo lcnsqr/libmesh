@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -238,11 +238,11 @@ int main (int argc, char ** argv)
   // Print information about the mesh to the screen.
   mesh.print_info();
 
-  // Now set the subdomain_id of all elements whose centroid is inside
+  // Now set the subdomain_id of all elements whose vertex average is inside
   // the circle to 1.
   for (auto elem : mesh.element_ptr_range())
     {
-      Real d = elem->centroid().norm();
+      Real d = elem->vertex_average().norm();
       if (d < 0.8)
         elem->subdomain_id() = 1;
     }

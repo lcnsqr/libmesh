@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -76,6 +76,7 @@
   template class FE< (_dim), L2_LAGRANGE>;                              \
   template class FE< (_dim), MONOMIAL>;                                 \
   template class FE< (_dim), SCALAR>;                                   \
+  template class FE< (_dim), SIDE_HIERARCHIC>;                          \
   template class FE< (_dim), XYZ>;                                      \
   template class FE< (_dim), NEDELEC_ONE>;                              \
   template class FE< (_dim), MONOMIAL_VEC>
@@ -91,6 +92,7 @@
   template class FE< (_dim), L2_LAGRANGE>;                              \
   template class FE< (_dim), MONOMIAL>;                                 \
   template class FE< (_dim), SCALAR>;                                   \
+  template class FE< (_dim), SIDE_HIERARCHIC>;                          \
   template class FE< (_dim), BERNSTEIN>;                                \
   template class FE< (_dim), SZABAB>;                                   \
   template class FE< (_dim), XYZ>;                                      \

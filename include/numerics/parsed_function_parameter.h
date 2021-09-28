@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -70,14 +70,14 @@ public:
   /**
    * Setter: change the value of the parameter we access.
    */
-  virtual void set (const T & new_value) {
+  virtual void set (const T & new_value) override {
     _func.set_inline_value(_name, new_value);
   }
 
   /**
    * Getter: get the value of the parameter we access.
    */
-  virtual const T & get () const {
+  virtual const T & get () const override {
     _current_val = _func.get_inline_value(_name);
     return _current_val;
   }
@@ -85,7 +85,7 @@ public:
   /**
    * \returns A new copy of the accessor.
    */
-  virtual std::unique_ptr<ParameterAccessor<T>> clone() const {
+  virtual std::unique_ptr<ParameterAccessor<T>> clone() const override {
     return libmesh_make_unique<ParsedFunctionParameter<T>>(_func, _name);
   }
 

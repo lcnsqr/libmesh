@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -81,7 +81,7 @@ public:
     InverseDistanceInterpolation<KDDim> (comm_in,8,2),
     _r_bbox(0.),
     _r_override(radius)
-  { libmesh_experimental(); }
+  { }
 
   /**
    * Clears all internal data structures and restores to a

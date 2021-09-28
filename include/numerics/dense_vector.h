@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,7 @@
 
 // C++ includes
 #include <vector>
+#include <initializer_list>
 
 namespace libMesh
 {
@@ -82,6 +83,12 @@ public:
    */
   template <typename T2>
   DenseVector (const std::vector<T2> & other_vector);
+
+  /**
+   * Initializer list constructor.
+   */
+  template <typename T2>
+  DenseVector (std::initializer_list<T2> init_list);
 
   /**
    * The 5 special functions can be defaulted for this class, as it
@@ -322,6 +329,13 @@ DenseVector<T>::DenseVector (const std::vector<T2> & other_vector) :
 }
 
 
+template<typename T>
+template <typename T2>
+inline
+DenseVector<T>::DenseVector (std::initializer_list<T2> init_list) :
+  _val(init_list.begin(), init_list.end())
+{
+}
 
 
 

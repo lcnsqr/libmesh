@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -85,12 +85,16 @@ public:
                 const FunctionBase<Number> * master=nullptr);
 
   /**
+   * A regular copy constructor.
+   */
+  MeshFunction (const MeshFunction & mf);
+
+  /**
    * Special functions.
    * - This class conains a unique_ptr so it can't be default copy constructed.
    * - This class contains const references so it can't be default copy/move assigned.
    * - The destructor is defaulted out-of-line.
    */
-  MeshFunction (const MeshFunction &) = delete;
   MeshFunction (MeshFunction &&) = default;
   MeshFunction & operator= (const MeshFunction &) = delete;
   MeshFunction & operator= (MeshFunction &&) = delete;
@@ -101,15 +105,17 @@ public:
   ~MeshFunction ();
 
   /**
-   * Override the FunctionBase::init() member function by calling our
-   * own and specifying the Trees::NODES method.  specifies the method
-   * to use when building a \p PointLocator
+   * Override the FunctionBase::init() member function.
    */
-  virtual void init () override { this->init(Trees::NODES); }
+  virtual void init () override;
 
   /**
    * The actual initialization process.  Takes an optional argument which
    * specifies the method to use when building a \p PointLocator
+   *
+   * \deprecated The input argument is not used (was it ever?) to
+   * control the PointLocator type which is built, so one should
+   * instead call the version of init() taking no args.
    */
   void init (const Trees::BuildType point_locator_build_type);
 
@@ -133,8 +139,8 @@ public:
    * \returns The value of variable 0 at point \p p and for \p time,
    * which defaults to zero.
    */
-  Number operator() (const Point & p,
-                     const Real time=0.) override;
+  virtual Number operator() (const Point & p,
+                             const Real time=0.) override;
 
   /**
    * \returns A map of values of variable 0 at point
@@ -174,18 +180,18 @@ public:
 
   /**
    * Computes values at coordinate \p p and for time \p time, which
-   * defaults to zero, optionally restricting the point to the passed
-   * subdomain_ids. This is useful in cases where there are multiple
-   * dimensioned elements, for example.
+   * defaults to zero, optionally restricting the point to the
+   * MeshFunction subdomain_ids. This is useful in cases where there
+   * are multiple dimensioned elements, for example.
    */
-  void operator() (const Point & p,
-                   const Real time,
-                   DenseVector<Number> & output) override;
+  virtual void operator() (const Point & p,
+                           const Real time,
+                           DenseVector<Number> & output) override;
 
   /**
    * Computes values at coordinate \p p and for time \p time,
-   * restricting the point to the passed subdomain_ids. This is useful in
-   * cases where there are multiple dimensioned elements, for example.
+   * restricting the point to the passed subdomain_ids, which
+   * parameter overrides the internal subdomain_ids.
    */
   void operator() (const Point & p,
                    const Real time,
@@ -213,14 +219,23 @@ public:
 
   /**
    * Computes gradients at coordinate \p p and for time \p time, which
+   * defaults to zero, optionally restricting the point to the
+   * MeshFunction subdomain_ids.
+   */
+  void gradient (const Point & p,
+                 const Real time,
+                 std::vector<Gradient> & output);
+
+  /**
+   * Computes gradients at coordinate \p p and for time \p time, which
    * defaults to zero, optionally restricting the point to the passed
-   * subdomain_ids. This is useful in cases where there are multiple
-   * dimensioned elements, for example.
+   * subdomain_ids, which parameter overrides the internal
+   * subdomain_ids.
    */
   void gradient (const Point & p,
                  const Real time,
                  std::vector<Gradient> & output,
-                 const std::set<subdomain_id_type> * subdomain_ids = nullptr);
+                 const std::set<subdomain_id_type> * subdomain_ids);
 
   /**
    * Similar to gradient, but with the difference
@@ -243,6 +258,15 @@ public:
 
   /**
    * Computes gradients at coordinate \p p and for time \p time, which
+   * defaults to zero, optionally restricting the point to the
+   * MeshFunction subdomain_ids.
+   */
+  void hessian (const Point & p,
+                const Real time,
+                std::vector<Tensor> & output);
+
+  /**
+   * Computes gradients at coordinate \p p and for time \p time, which
    * defaults to zero, optionally restricting the point to the passed
    * subdomain_ids. This is useful in cases where there are multiple
    * dimensioned elements, for example.
@@ -250,7 +274,7 @@ public:
   void hessian (const Point & p,
                 const Real time,
                 std::vector<Tensor> & output,
-                const std::set<subdomain_id_type> * subdomain_ids = nullptr);
+                const std::set<subdomain_id_type> * subdomain_ids);
 
   /**
    * \returns The current \p PointLocator object, for use elsewhere.
@@ -259,6 +283,7 @@ public:
    * is called.
    */
   const PointLocatorBase & get_point_locator () const;
+  PointLocatorBase & get_point_locator ();
 
   /**
    * Enables out-of-mesh mode.  In this mode, if asked for a point
@@ -301,6 +326,15 @@ public:
    * Turn off the user-specified PointLocator tolerance.
    */
   void unset_point_locator_tolerance();
+
+  /**
+   * Choose a default list of subdomain ids to be searched for points.
+   * If the provided list pointer is null or if no list has been
+   * provided, then all subdomain ids are searched.  This list can be
+   * overridden on a per-evaluation basis by using the method
+   * overrides with a similar argument.
+   */
+  void set_subdomain_ids(const std::set<subdomain_id_type> * subdomain_ids);
 
 protected:
 
@@ -347,6 +381,11 @@ protected:
    * points in the mesh.
    */
   std::unique_ptr<PointLocatorBase> _point_locator;
+
+  /**
+   * A default set of subdomain ids in which to search for points.
+   */
+  std::unique_ptr<std::set<subdomain_id_type>> _subdomain_ids;
 
   /**
    * \p true if out-of-mesh mode is enabled.  See \p

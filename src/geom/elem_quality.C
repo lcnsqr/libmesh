@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -338,6 +338,7 @@ std::vector<ElemQuality> Quality::valid(const ElemType t)
     case TRI3:
     case TRISHELL3:
     case TRI6:
+    case TRI7:
       {
         v.resize(7);
         v[0] = MAX_ANGLE;
@@ -375,6 +376,7 @@ std::vector<ElemQuality> Quality::valid(const ElemType t)
 
     case TET4:
     case TET10:
+    case TET14:
       {
         v.resize(7);
         v[0]  = ASPECT_RATIO_BETA;

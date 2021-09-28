@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,10 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-
-// Local includes
+// libmesh includes
 #include "libmesh/fe.h"
 #include "libmesh/libmesh_logging.h"
 #include "libmesh/enum_elem_type.h"
-
-// For projection code:
 #include "libmesh/boundary_info.h"
 #include "libmesh/mesh_base.h"
 #include "libmesh/dense_matrix.h"
@@ -39,6 +35,12 @@
 #include "libmesh/tensor_value.h"
 #include "libmesh/threads.h"
 #include "libmesh/enum_elem_type.h"
+#include "libmesh/enum_to_string.h"
+
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+#include "libmesh/inf_fe.h"
+#include "libmesh/fe_interface_macros.h"
+#endif
 
 namespace libMesh
 {
@@ -49,6 +51,7 @@ FEAbstract::FEAbstract(const unsigned int d,
   dim(d),
   calculations_started(false),
   calculate_dual(false),
+  calculate_dual_coeff(true),
   calculate_nothing(false),
   calculate_map(false),
   calculate_phi(false),
@@ -102,6 +105,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<0,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<0,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<0,MONOMIAL>>(fet);
 
@@ -126,7 +132,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FEScalar<0>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
       // 1D
@@ -155,6 +161,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<1,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<1,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<1,MONOMIAL>>(fet);
 
@@ -179,7 +188,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FEScalar<1>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -209,6 +218,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
 
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<2,L2_HIERARCHIC>>(fet);
+
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<2,SIDE_HIERARCHIC>>(fet);
 
           case MONOMIAL:
             return libmesh_make_unique<FE<2,MONOMIAL>>(fet);
@@ -240,7 +252,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FESubdivision>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -271,6 +283,9 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<3,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<3,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<3,MONOMIAL>>(fet);
 
@@ -298,7 +313,7 @@ std::unique_ptr<FEAbstract> FEAbstract::build(const unsigned int dim,
             return libmesh_make_unique<FENedelecOne<3>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family= " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -361,6 +376,18 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
         nodes[5] = Point (0.,.5,0.);
         return;
       }
+    case TRI7:
+      {
+        nodes.resize(7);
+        nodes[0] = Point (0.,0.,0.);
+        nodes[1] = Point (1.,0.,0.);
+        nodes[2] = Point (0.,1.,0.);
+        nodes[3] = Point (.5,0.,0.);
+        nodes[4] = Point (.5,.5,0.);
+        nodes[5] = Point (0.,.5,0.);
+        nodes[6] = Point (1./3.,1./3.,0.);
+        return;
+      }
     case QUAD4:
     case QUADSHELL4:
       {
@@ -421,6 +448,25 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
         nodes[7] = Point (0.,0.,.5);
         nodes[8] = Point (.5,0.,.5);
         nodes[9] = Point (0.,.5,.5);
+        return;
+      }
+    case TET14:
+      {
+        nodes.resize(14);
+        nodes[0] = Point (0.,0.,0.);
+        nodes[1] = Point (1.,0.,0.);
+        nodes[2] = Point (0.,1.,0.);
+        nodes[3] = Point (0.,0.,1.);
+        nodes[4] = Point (.5,0.,0.);
+        nodes[5] = Point (.5,.5,0.);
+        nodes[6] = Point (0.,.5,0.);
+        nodes[7] = Point (0.,0.,.5);
+        nodes[8] = Point (.5,0.,.5);
+        nodes[9] = Point (0.,.5,.5);
+        nodes[10] = Point (1/Real(3),1/Real(3),0.);
+        nodes[11] = Point (1/Real(3),0.,1/Real(3));
+        nodes[12] = Point (1/Real(3),1/Real(3),1/Real(3));
+        nodes[13] = Point (0.,1/Real(3),1/Real(3));
         return;
       }
     case HEX8:
@@ -616,7 +662,7 @@ void FEAbstract::get_refspace_nodes(const ElemType itemType, std::vector<Point> 
       }
 
     default:
-      libmesh_error_msg("ERROR: Unknown element type " << itemType);
+      libmesh_error_msg("ERROR: Unknown element type " << Utility::enum_to_string(itemType));
     }
 }
 
@@ -658,6 +704,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
     case TRI3:
     case TRISHELL3:
     case TRI6:
+    case TRI7:
       {
         // The reference triangle is isosceles
         // and is bound by xi=0, eta=0, and xi+eta=1.
@@ -689,6 +736,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
 
     case TET4:
     case TET10:
+    case TET14:
       {
         // The reference tetrahedral is isosceles
         // and is bound by xi=0, eta=0, zeta=0,
@@ -808,7 +856,7 @@ bool FEAbstract::on_reference_element(const Point & p, const ElemType t, const R
 #endif
 
     default:
-      libmesh_error_msg("ERROR: Unknown element type " << t);
+      libmesh_error_msg("ERROR: Unknown element type " << Utility::enum_to_string(t));
     }
 
   // If we get here then the point is _not_ in the
@@ -874,8 +922,34 @@ void FEAbstract::compute_node_constraints (NodeConstraints & constraints,
   if (elem->subactive())
     return;
 
+
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+  if (elem->infinite())
+    {
+      const FEType fe_t(elem->default_order(), FEMap::map_fe_type(*elem));
+
+      // expand the infinite_compute_constraint in its template-arguments.
+      switch(Dim)
+      {
+         case 2:
+            {
+            inf_fe_family_mapping_switch(2, inf_compute_node_constraints (constraints, elem) , ,; break;);
+            break;
+          }
+         case 3:
+            {
+            inf_fe_family_mapping_switch(3, inf_compute_node_constraints (constraints, elem) , ,; break;);
+            break;
+            }
+         default:
+           libmesh_error_msg("Invalid dim = " << Dim);
+      }
+      return;
+    }
+
+#endif
   const FEFamily mapping_family = FEMap::map_fe_type(*elem);
-  const FEType fe_type(elem->default_order(), mapping_family);
+  const FEType fe_type(elem->default_side_order(), mapping_family);
 
   // Pull objects out of the loop to reduce heap operations
   std::vector<const Node *> my_nodes, parent_nodes;
@@ -1024,7 +1098,7 @@ void FEAbstract::compute_periodic_node_constraints (NodeConstraints & constraint
   const unsigned int Dim = elem->dim();
 
   const FEFamily mapping_family = FEMap::map_fe_type(*elem);
-  const FEType fe_type(elem->default_order(), mapping_family);
+  const FEType fe_type(elem->default_side_order(), mapping_family);
 
   // Pull objects out of the loop to reduce heap operations
   std::vector<const Node *> my_nodes, neigh_nodes;

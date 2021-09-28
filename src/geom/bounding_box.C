@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -27,7 +27,7 @@
 namespace libMesh
 {
 // Small helper function to make contains_point() more readable.
-bool is_between(Real min, Real check, Real max)
+inline bool is_between(Real min, Real check, Real max)
 {
   return min <= check && check <= max;
 }

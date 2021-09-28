@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -164,6 +164,10 @@ public:
    */
   virtual bool contains_point (const Point & p, Real tol=TOLERANCE) const override;
 
+  /**
+   * One non-infinite side, three orientations.
+   */
+  virtual unsigned int n_permutations() const override final { return 3; }
 
 protected:
 

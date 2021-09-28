@@ -715,7 +715,7 @@ void load_rb_eim_evaluation_data(RBEIMEvaluation & rb_eim_evaluation,
       }
   }
 
-  // Interpolation points componnents
+  // Interpolation points components
   {
     auto interpolation_points_comp_list =
       rb_eim_evaluation_reader.getInterpolationComp();
@@ -792,13 +792,13 @@ void load_rb_eim_evaluation_data(RBEIMEvaluation & rb_eim_evaluation,
       }
   }
 
-  // Optionally load EIM rhs values for the training set
+  // Optionally load EIM solutions for the training set
   if (rb_eim_evaluation.get_parametrized_function().is_lookup_table)
     {
       auto eim_rhs_list_outer =
         rb_eim_evaluation_reader.getEimSolutionsForTrainingSet();
 
-      std::vector<DenseVector<Number>> & eim_solutions = rb_eim_evaluation.eim_solutions;
+      std::vector<DenseVector<Number>> & eim_solutions = rb_eim_evaluation.get_eim_solutions_for_training_set();
       eim_solutions.clear();
       eim_solutions.resize(eim_rhs_list_outer.size());
 
@@ -814,6 +814,73 @@ void load_rb_eim_evaluation_data(RBEIMEvaluation & rb_eim_evaluation,
           eim_solutions[i] = values;
         }
     }
+
+  // Optionally load observation points data for the EIM basis functions
+  unsigned int n_obs_pts = rb_eim_evaluation.get_n_observation_points();
+  if (n_obs_pts > 0)
+    {
+      {
+        auto observation_points_xyz_list =
+          rb_eim_evaluation_reader.getObservationPointsXyz();
+
+        std::vector<Point> observation_points_xyz;
+        for (unsigned int i=0; i<observation_points_xyz_list.size(); ++i)
+          {
+            Point p;
+            load_point(observation_points_xyz_list[i], p);
+            observation_points_xyz.emplace_back(p);
+          }
+
+        rb_eim_evaluation.set_observation_points(observation_points_xyz);
+      }
+
+      {
+        auto obs_values_list_outer =
+          rb_eim_evaluation_reader.getObservationPointsValues();
+
+        std::vector<std::vector<std::vector<Number>>> observation_values;
+        observation_values.resize(obs_values_list_outer.size());
+
+        for (auto i : make_range(obs_values_list_outer.size()))
+          {
+            auto obs_values_list_middle = obs_values_list_outer[i];
+
+            observation_values[i].resize(obs_values_list_middle.size());
+            for (auto j : index_range(observation_values[i]))
+              {
+                auto obs_values_list_inner = obs_values_list_middle[j];
+
+                observation_values[i][j].resize(obs_values_list_inner.size());
+                for (auto k : index_range(observation_values[i][j]))
+                  observation_values[i][j][k] = load_scalar_value(obs_values_list_inner[k]);
+              }
+          }
+
+        rb_eim_evaluation.set_observation_values(observation_values);
+      }
+    }
+
+  // The shape function values at the interpolation points. This can be used to evaluate nodal data
+  // at EIM interpolation points, which are at quadrature points.
+  {
+    auto interpolation_points_list_outer =
+      rb_eim_evaluation_reader.getInterpolationPhiValues();
+
+    libmesh_error_msg_if(interpolation_points_list_outer.size() != n_bfs,
+                         "Size error while reading the eim interpolation points.");
+
+    for (unsigned int i=0; i<n_bfs; ++i)
+      {
+        auto interpolation_points_list_inner = interpolation_points_list_outer[i];
+
+        std::vector<Real> phi_i_qp(interpolation_points_list_inner.size());
+        for (unsigned int j=0; j<phi_i_qp.size(); j++)
+          {
+            phi_i_qp[j] = interpolation_points_list_inner[j];
+          }
+        rb_eim_evaluation.add_interpolation_points_phi_i_qp(phi_i_qp);
+      }
+  }
 }
 
 #if defined(LIBMESH_HAVE_SLEPC) && (LIBMESH_HAVE_GLPK)
@@ -866,12 +933,12 @@ void load_rb_scm_evaluation_data(RBSCMEvaluation & rb_scm_eval,
       rb_scm_evaluation_reader.getCJ();
 
     rb_scm_eval.C_J.resize(cJ_parameters_outer.size());
-    for (auto i : index_range(cJ_parameters_outer))
+    for (auto i : make_range(cJ_parameters_outer.size()))
       {
         auto cJ_parameters_inner =
           cJ_parameters_outer[i];
 
-        for (auto j : index_range(cJ_parameters_inner))
+        for (auto j : make_range(cJ_parameters_inner.size()))
           {
             std::string param_name = cJ_parameters_inner[j].getName();
             Real param_value = cJ_parameters_inner[j].getValue();

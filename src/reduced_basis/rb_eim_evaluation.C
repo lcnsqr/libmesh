@@ -21,6 +21,7 @@
 #include "libmesh/rb_eim_evaluation.h"
 #include "libmesh/rb_eim_theta.h"
 #include "libmesh/rb_parametrized_function.h"
+#include "libmesh/rb_evaluation.h"
 #include "libmesh/utility.h" // Utility::mkdir
 
 // libMesh includes
@@ -29,6 +30,8 @@
 #include "libmesh/replicated_mesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/system.h"
+#include "libmesh/numeric_vector.h"
+#include "libmesh/quadrature.h"
 #include "timpi/parallel_implementation.h"
 
 // C++ includes
@@ -43,8 +46,8 @@ namespace libMesh
 RBEIMEvaluation::RBEIMEvaluation(const Parallel::Communicator & comm)
 :
 ParallelObject(comm),
-evaluate_eim_error_bound(true),
-_rb_eim_solves_N(0)
+_rb_eim_solves_N(0),
+_preserve_rb_eim_solutions(false)
 {
 }
 
@@ -58,6 +61,7 @@ void RBEIMEvaluation::clear()
   _interpolation_points_xyz_perturbations.clear();
   _interpolation_points_elem_id.clear();
   _interpolation_points_qp.clear();
+  _interpolation_points_phi_i_qp.clear();
 
   _interpolation_matrix.resize(0,0);
 
@@ -74,6 +78,7 @@ void RBEIMEvaluation::resize_data_structures(const unsigned int Nmax)
   _interpolation_points_xyz_perturbations.clear();
   _interpolation_points_elem_id.clear();
   _interpolation_points_qp.clear();
+  _interpolation_points_phi_i_qp.clear();
 
   _interpolation_matrix.resize(Nmax,Nmax);
 }
@@ -90,62 +95,7 @@ RBParametrizedFunction & RBEIMEvaluation::get_parametrized_function()
   return *_parametrized_function;
 }
 
-Real RBEIMEvaluation::rb_eim_solve(unsigned int N)
-{
-  LOG_SCOPE("rb_eim_solve()", "RBEIMEvaluation");
-
-  libmesh_error_msg_if(N > get_n_basis_functions(), "Error: N cannot be larger than the number of basis functions in rb_solve");
-  libmesh_error_msg_if(N==0, "Error: N must be greater than 0 in rb_solve");
-
-  // Get the rhs by sampling parametrized_function
-  // at the first N interpolation_points
-  DenseVector<Number> EIM_rhs(N);
-  for (unsigned int i=0; i<N; i++)
-    {
-      EIM_rhs(i) =
-        get_parametrized_function().evaluate_comp(get_parameters(),
-                                                  _interpolation_points_comp[i],
-                                                  _interpolation_points_xyz[i],
-                                                  _interpolation_points_subdomain_id[i],
-                                                  _interpolation_points_xyz_perturbations[i]);
-    }
-
-  DenseMatrix<Number> interpolation_matrix_N;
-  _interpolation_matrix.get_principal_submatrix(N, interpolation_matrix_N);
-
-  interpolation_matrix_N.lu_solve(EIM_rhs, _rb_eim_solution);
-
-  // Optionally evaluate an a posteriori error bound. The EIM error estimate
-  // recommended in the literature is based on using "next" EIM point, so
-  // we skip this if N == get_n_basis_functions()
-  if (evaluate_eim_error_bound && (N != get_n_basis_functions()))
-    {
-      // Compute the a posteriori error bound
-      // First, sample the parametrized function at x_{N+1}
-      Number g_at_next_x =
-        get_parametrized_function().evaluate_comp(get_parameters(),
-                                                  _interpolation_points_comp[N],
-                                                  _interpolation_points_xyz[N],
-                                                  _interpolation_points_subdomain_id[N],
-                                                  _interpolation_points_xyz_perturbations[N]);
-
-      // Next, evaluate the EIM approximation at x_{N+1}
-      Number EIM_approx_at_next_x = 0.;
-      for (unsigned int j=0; j<N; j++)
-        {
-          EIM_approx_at_next_x += _rb_eim_solution(j) * _interpolation_matrix(N,j);
-        }
-
-      Real error_estimate = std::abs(g_at_next_x - EIM_approx_at_next_x);
-      return error_estimate;
-    }
-  else // Don't evaluate an error bound
-    {
-      return -1.;
-    }
-}
-
-void RBEIMEvaluation::rb_eim_solve(DenseVector<Number> & EIM_rhs)
+DenseVector<Number> RBEIMEvaluation::rb_eim_solve(DenseVector<Number> & EIM_rhs)
 {
   LOG_SCOPE("rb_eim_solve()", "RBEIMEvaluation");
 
@@ -155,15 +105,28 @@ void RBEIMEvaluation::rb_eim_solve(DenseVector<Number> & EIM_rhs)
   libmesh_error_msg_if(EIM_rhs.size()==0, "Error: N must be greater than 0 in rb_solve");
 
   const unsigned int N = EIM_rhs.size();
+  DenseVector<Number> rb_eim_solution(N);
   DenseMatrix<Number> interpolation_matrix_N;
   _interpolation_matrix.get_principal_submatrix(N, interpolation_matrix_N);
 
-  interpolation_matrix_N.lu_solve(EIM_rhs, _rb_eim_solution);
+  interpolation_matrix_N.lu_solve(EIM_rhs, rb_eim_solution);
+
+  return rb_eim_solution;
 }
 
 void RBEIMEvaluation::rb_eim_solves(const std::vector<RBParameters> & mus,
                                     unsigned int N)
 {
+  if (_preserve_rb_eim_solutions)
+    {
+      // In this case we preserve _rb_eim_solutions and hence we
+      // just return immediately so that we skip updating
+      // _rb_eim_solutions below. This is relevant in cases where
+      // we set up _rb_eim_solutions elsewhere and we don't want
+      // to override it.
+      return;
+    }
+
   libmesh_error_msg_if(N > get_n_basis_functions(),
     "Error: N cannot be larger than the number of basis functions in rb_eim_solves");
   libmesh_error_msg_if(N==0, "Error: N must be greater than 0 in rb_eim_solves");
@@ -191,7 +154,7 @@ void RBEIMEvaluation::rb_eim_solves(const std::vector<RBParameters> & mus,
             cast_int<unsigned int>(std::round(lookup_table_param));
 
           DenseVector<Number> values;
-          eim_solutions[lookup_table_index].get_principal_subvector(N, values);
+          _eim_solutions_for_training_set[lookup_table_index].get_principal_subvector(N, values);
           _rb_eim_solutions[mu_index] = values;
         }
 
@@ -203,8 +166,11 @@ void RBEIMEvaluation::rb_eim_solves(const std::vector<RBParameters> & mus,
   std::vector<std::vector<std::vector<Number>>> output_all_comps;
   get_parametrized_function().vectorized_evaluate(mus,
                                                   _interpolation_points_xyz,
+                                                  _interpolation_points_elem_id,
+                                                  _interpolation_points_qp,
                                                   _interpolation_points_subdomain_id,
                                                   _interpolation_points_xyz_perturbations,
+                                                  _interpolation_points_phi_i_qp,
                                                   output_all_comps);
 
   std::vector<std::vector<Number>> evaluated_values_at_interp_points(output_all_comps.size());
@@ -376,9 +342,14 @@ RBEIMEvaluation::get_basis_function(unsigned int i) const
   return _local_eim_basis_functions[i];
 }
 
-const DenseVector<Number> & RBEIMEvaluation::get_rb_eim_solution() const
+void RBEIMEvaluation::set_rb_eim_solutions(const std::vector<DenseVector<Number>> & rb_eim_solutions)
 {
-  return _rb_eim_solution;
+  _rb_eim_solutions = rb_eim_solutions;
+}
+
+const std::vector<DenseVector<Number>> & RBEIMEvaluation::get_rb_eim_solutions() const
+{
+  return _rb_eim_solutions;
 }
 
 std::vector<Number> RBEIMEvaluation::get_rb_eim_solutions_entries(unsigned int index) const
@@ -393,6 +364,16 @@ std::vector<Number> RBEIMEvaluation::get_rb_eim_solutions_entries(unsigned int i
     }
 
   return rb_eim_solutions_entries;
+}
+
+const std::vector<DenseVector<Number>> & RBEIMEvaluation::get_eim_solutions_for_training_set() const
+{
+  return _eim_solutions_for_training_set;
+}
+
+std::vector<DenseVector<Number>> & RBEIMEvaluation::get_eim_solutions_for_training_set()
+{
+  return _eim_solutions_for_training_set;
 }
 
 void RBEIMEvaluation::add_interpolation_points_xyz(Point p)
@@ -415,7 +396,6 @@ void RBEIMEvaluation::add_interpolation_points_xyz_perturbations(const std::vect
   _interpolation_points_xyz_perturbations.emplace_back(perturbs);
 }
 
-
 void RBEIMEvaluation::add_interpolation_points_elem_id(dof_id_type elem_id)
 {
   _interpolation_points_elem_id.emplace_back(elem_id);
@@ -424,6 +404,11 @@ void RBEIMEvaluation::add_interpolation_points_elem_id(dof_id_type elem_id)
 void RBEIMEvaluation::add_interpolation_points_qp(unsigned int qp)
 {
   _interpolation_points_qp.emplace_back(qp);
+}
+
+void RBEIMEvaluation::add_interpolation_points_phi_i_qp(const std::vector<Real> & phi_i_qp)
+{
+  _interpolation_points_phi_i_qp.emplace_back(phi_i_qp);
 }
 
 Point RBEIMEvaluation::get_interpolation_points_xyz(unsigned int index) const
@@ -468,6 +453,13 @@ unsigned int RBEIMEvaluation::get_interpolation_points_qp(unsigned int index) co
   return _interpolation_points_qp[index];
 }
 
+const std::vector<Real> & RBEIMEvaluation::get_interpolation_points_phi_i_qp(unsigned int index) const
+{
+  libmesh_error_msg_if(index >= _interpolation_points_phi_i_qp.size(), "Error: Invalid index");
+
+  return _interpolation_points_phi_i_qp[index];
+}
+
 void RBEIMEvaluation::set_interpolation_matrix_entry(unsigned int i, unsigned int j, Number value)
 {
   libmesh_error_msg_if((i >= _interpolation_matrix.m()) || (j >= _interpolation_matrix.n()),
@@ -481,6 +473,54 @@ const DenseMatrix<Number> & RBEIMEvaluation::get_interpolation_matrix() const
   return _interpolation_matrix;
 }
 
+void RBEIMEvaluation::set_observation_points(const std::vector<Point> & observation_points_xyz)
+{
+  _observation_points_xyz = observation_points_xyz;
+}
+
+unsigned int RBEIMEvaluation::get_n_observation_points() const
+{
+  return _observation_points_xyz.size();
+}
+
+const std::vector<Point> & RBEIMEvaluation::get_observation_points() const
+{
+  return _observation_points_xyz;
+}
+
+const std::vector<Number> & RBEIMEvaluation::get_observation_values(unsigned int bf_index, unsigned int obs_pt_index) const
+{
+  libmesh_error_msg_if(bf_index >= _observation_points_values.size(), "Invalid basis function index: " << bf_index);
+  libmesh_error_msg_if(obs_pt_index >= _observation_points_values[bf_index].size(), "Invalid observation point index: " << obs_pt_index);
+
+  return _observation_points_values[bf_index][obs_pt_index];
+}
+
+const std::vector<std::vector<std::vector<Number>>> & RBEIMEvaluation::get_observation_values() const
+{
+  return _observation_points_values;
+}
+
+void RBEIMEvaluation::set_preserve_rb_eim_solutions(bool preserve_rb_eim_solutions)
+{
+  _preserve_rb_eim_solutions = preserve_rb_eim_solutions;
+}
+
+bool RBEIMEvaluation::get_preserve_rb_eim_solutions() const
+{
+  return _preserve_rb_eim_solutions;
+}
+
+void RBEIMEvaluation::add_observation_values_for_basis_function(const std::vector<std::vector<Number>> & values)
+{
+  _observation_points_values.emplace_back(values);
+}
+
+void RBEIMEvaluation::set_observation_values(const std::vector<std::vector<std::vector<Number>>> & values)
+{
+  _observation_points_values = values;
+}
+
 void RBEIMEvaluation::add_basis_function_and_interpolation_data(
   const QpDataMap & bf,
   Point p,
@@ -488,7 +528,8 @@ void RBEIMEvaluation::add_basis_function_and_interpolation_data(
   dof_id_type elem_id,
   subdomain_id_type subdomain_id,
   unsigned int qp,
-  const std::vector<Point> & perturbs)
+  const std::vector<Point> & perturbs,
+  const std::vector<Real> & phi_i_qp)
 {
   _local_eim_basis_functions.emplace_back(bf);
 
@@ -498,6 +539,7 @@ void RBEIMEvaluation::add_basis_function_and_interpolation_data(
   _interpolation_points_subdomain_id.emplace_back(subdomain_id);
   _interpolation_points_qp.emplace_back(qp);
   _interpolation_points_xyz_perturbations.emplace_back(perturbs);
+  _interpolation_points_phi_i_qp.emplace_back(phi_i_qp);
 }
 
 void RBEIMEvaluation::
@@ -1107,6 +1149,138 @@ void RBEIMEvaluation::distribute_bfs(const System & sys)
             } // end for (e)
         } // end for proc_id
     } // if (rank == 0)
+}
+
+void RBEIMEvaluation::project_qp_data_map_onto_system(System & sys,
+                                                      const QpDataMap & qp_data_map,
+                                                      unsigned int var)
+{
+  LOG_SCOPE("project_basis_function_onto_system()", "RBEIMEvaluation");
+
+  libmesh_error_msg_if(sys.n_vars() == 0, "System must have at least one variable");
+
+  FEMContext context(sys);
+  {
+    // Pre-request relevant data for all dimensions
+    for (unsigned int dim=1; dim<=3; ++dim)
+      if (sys.get_mesh().elem_dimensions().count(dim))
+        for (auto init_var : make_range(sys.n_vars()))
+        {
+          auto fe = context.get_element_fe(init_var, dim);
+          fe->get_JxW();
+          fe->get_phi();
+        }
+  }
+
+  FEBase * elem_fe = nullptr;
+  context.get_element_fe( 0, elem_fe );
+  const std::vector<Real> & JxW = elem_fe->get_JxW();
+  const std::vector<std::vector<Real>> & phi = elem_fe->get_phi();
+
+  // Get a reference to the current_local_solution vector, which has
+  // GHOSTED DOFs. Make sure it is initially zeroed, since we will now
+  // accumulate values into it.
+  auto & current_local_soln = *(sys.current_local_solution);
+  current_local_soln.zero();
+
+  // The repeat_count vector will store the number of times a
+  // projected value has been assigned to a node. We get a reference
+  // to it for convenience in the code below.
+  std::unique_ptr<NumericVector<Number>> repeat_count_ptr = current_local_soln.zero_clone();
+  auto & repeat_count = *repeat_count_ptr;
+
+  for (const auto & elem : sys.get_mesh().active_local_element_ptr_range())
+    {
+      context.pre_fe_reinit(sys, elem);
+      context.elem_fe_reinit();
+
+      const std::vector<dof_id_type> & dof_indices = context.get_dof_indices(/*var=*/0);
+      unsigned int n_proj_dofs = dof_indices.size();
+      unsigned int n_qpoints = context.get_element_qrule().n_points();
+
+      const std::vector<std::vector<Number>> & var_and_qp_data = libmesh_map_find(qp_data_map, elem->id());
+      libmesh_error_msg_if(var >= var_and_qp_data.size(), "Invalid EIM variable number: " << var);
+      const std::vector<Number> & qp_data = var_and_qp_data[var];
+      libmesh_error_msg_if(qp_data.size() != n_qpoints, "Invalid EIM variable number: " << var);
+
+      DenseMatrix<Number> Me(n_proj_dofs, n_proj_dofs);
+      DenseVector<Number> Fe(n_proj_dofs);
+      for (auto qp : make_range(n_qpoints))
+        for (auto i : make_range(n_proj_dofs))
+          {
+            Fe(i) += JxW[qp] * qp_data[qp] * phi[i][qp];
+
+            for (auto j : make_range(n_proj_dofs))
+              Me(i,j) += JxW[qp] * phi[i][qp] * phi[j][qp];
+          }
+
+      DenseVector<Number> projected_data;
+      Me.cholesky_solve(Fe, projected_data);
+
+      for (auto i : make_range(n_proj_dofs))
+        {
+          current_local_soln.add(dof_indices[i], projected_data(i));
+          repeat_count.add(dof_indices[i], 1.);
+        }
+    }
+
+  current_local_soln.close();
+  repeat_count.close();
+
+  // Average the projected QP values to get nodal values
+  current_local_soln /= repeat_count;
+  current_local_soln.close();
+
+  // Copy values from the GHOSTED current_local_solution vector into
+  // sys.solution, since that is what will ultimately be plotted/used
+  // by other parts of the code.
+  (*sys.solution) = current_local_soln;
+}
+
+std::set<unsigned int> RBEIMEvaluation::get_eim_vars_to_project_and_write() const
+{
+  return std::set<unsigned int>();
+}
+
+void RBEIMEvaluation::write_out_projected_basis_functions(System & sys,
+                                                          const std::string & directory_name)
+{
+  if (get_eim_vars_to_project_and_write().empty())
+    return;
+
+  for (unsigned int eim_var : get_eim_vars_to_project_and_write())
+    {
+      std::vector<std::unique_ptr<NumericVector<Number>>> projected_bfs;
+      for (unsigned int bf_index : make_range(get_n_basis_functions()))
+        {
+          project_qp_data_map_onto_system(
+            sys,
+            get_basis_function(bf_index),
+            eim_var);
+
+          projected_bfs.emplace_back(sys.solution->clone());
+        }
+
+      // Create projected_bfs_ptrs so that we can call RBEvaluation::write_out_vectors()
+      std::vector<NumericVector<Number>*> projected_bfs_ptrs(projected_bfs.size());
+      for (unsigned int i : index_range(projected_bfs))
+        {
+          projected_bfs_ptrs[i] = projected_bfs[i].get();
+        }
+
+      RBEvaluation::write_out_vectors(sys,
+                                      projected_bfs_ptrs,
+                                      directory_name,
+                                      "projected_bf_var_" + std::to_string(eim_var));
+    }
+}
+
+bool RBEIMEvaluation::scale_components_in_enrichment() const
+{
+  // Return false by default, but we override this in subclasses
+  // where the parametrized function components differ widely in
+  // magnitude.
+  return false;
 }
 
 } // namespace libMesh

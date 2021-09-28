@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,11 +16,10 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// C++ includes
-
 // Local includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -155,15 +154,66 @@ RealGradient FE<3,NEDELEC_ONE>::shape(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
 
-              libmesh_not_implemented();
+              const Real xi   = p(0);
+              const Real eta  = p(1);
+              const Real zeta = p(2);
+
+              switch(i)
+                {
+                case 0:
+                  {
+                    if (elem->point(0) > elem->point(1))
+                      return RealGradient( -1.0+eta+zeta, -xi, -xi );
+                    else
+                      return RealGradient( 1.0-eta-zeta, xi, xi );
+                  }
+                case 1:
+                  {
+                    if (elem->point(1) > elem->point(2))
+                      return RealGradient( eta,  -xi, 0.0 );
+                    else
+                      return RealGradient( -eta, xi, 0.0 );
+                  }
+                case 2:
+                  {
+                    if (elem->point(0) > elem->point(2))
+                      return RealGradient( -eta, -1.0+xi+zeta, -eta );
+                    else
+                      return RealGradient( eta, 1.0-xi-zeta, eta );
+                  }
+                case 3:
+                  {
+                    if (elem->point(0) > elem->point(3))
+                      return RealGradient( -zeta, -zeta, -1.0+xi+eta );
+                    else
+                      return RealGradient( zeta, zeta, 1.0-xi-eta );
+                  }
+                case 4:
+                  {
+                    if (elem->point(1) > elem->point(3))
+                      return RealGradient( zeta, 0.0, -xi );
+                    else
+                      return RealGradient( -zeta, 0.0, xi );
+                  }
+                case 5:
+                  {
+                    if (elem->point(2) > elem->point(3))
+                      return RealGradient( 0.0, zeta, -eta );
+                    else
+                      return RealGradient( 0.0, -zeta, eta );
+                  }
+                default:
+                  libmesh_error_msg("Invalid i = " << i);
+                }
               return RealGradient();
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << Utility::enum_to_string(elem->type()));
           }
       }
 
@@ -465,18 +515,173 @@ RealGradient FE<3,NEDELEC_ONE>::shape_deriv(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
 
-              libmesh_not_implemented();
+
+              switch (j) //loop over components of vector shape function
+                {
+                  // d()/dxi
+                case 0:
+                  {
+                    switch(i)
+                      {
+                      case 0:
+                        {
+                          if (elem->point(0) > elem->point(1))
+                            return RealGradient( 0.0, -1.0, -1.0 );
+                          else
+                            return RealGradient( 0.0, 1.0, 1.0 );
+                        }
+                      case 1:
+                        {
+                          if (elem->point(1) > elem->point(2))
+                            return RealGradient( 0.0,  -1.0, 0.0 );
+                          else
+                            return RealGradient( 0.0, 1.0, 0.0 );
+                        }
+                      case 2:
+                        {
+                          if (elem->point(0) > elem->point(2))
+                            return RealGradient( 0.0, 1.0, 0.0 );
+                          else
+                            return RealGradient( 0.0, -1.0, 0.0 );
+                        }
+                      case 3:
+                        {
+                          if (elem->point(0) > elem->point(3))
+                            return RealGradient( 0.0, 0.0, 1.0 );
+                          else
+                            return RealGradient( 0.0, 0.0, -1.0 );
+                        }
+                      case 4:
+                        {
+                          if (elem->point(1) > elem->point(3))
+                            return RealGradient( 0.0, 0.0, -1.0 );
+                          else
+                            return RealGradient( 0.0, 0.0, 1.0 );
+                        }
+                      case 5:
+                        {
+                          return RealGradient();
+                        }
+
+                      default:
+                        libmesh_error_msg("Invalid i = " << i);
+                      } // switch(i)
+
+                  } // j=0
+
+                  // d()/deta
+                case 1:
+                  {
+                    switch(i)
+                      {
+                        case 0:
+                          {
+                            if (elem->point(0) > elem->point(1))
+                              return RealGradient( 1.0, 0.0, 0.0 );
+                            else
+                              return RealGradient( -1.0, 0.0, 0.0 );
+                          }
+                        case 1:
+                          {
+                            if (elem->point(1) > elem->point(2))
+                              return RealGradient( 1.0,  0.0, 0.0 );
+                            else
+                              return RealGradient( -1.0, 0.0, 0.0 );
+                          }
+                        case 2:
+                          {
+                            if (elem->point(0) > elem->point(2))
+                              return RealGradient( -1.0, 0.0, -1.0 );
+                            else
+                              return RealGradient( 1.0, 0.0, 1.0 );
+                          }
+                        case 3:
+                          {
+                            if (elem->point(0) > elem->point(3))
+                              return RealGradient( 0.0, 0.0, 1.0 );
+                            else
+                              return RealGradient( 0.0, 0.0, -1.0 );
+                          }
+                        case 4:
+                          {
+                            return RealGradient();
+                          }
+                        case 5:
+                          {
+                            if (elem->point(2) > elem->point(3))
+                              return RealGradient( 0.0, 0.0, -1.0 );
+                            else
+                              return RealGradient( 0.0, 0.0, 1.0 );
+                          }
+                      default:
+                        libmesh_error_msg("Invalid i = " << i);
+                      } // switch(i)
+
+                  } // j=1
+
+                  // d()/dzeta
+                case 2:
+                  {
+                    switch(i)
+                      {
+                        case 0:
+                          {
+                            if (elem->point(0) > elem->point(1))
+                              return RealGradient( 1.0, 0.0, 0.0 );
+                            else
+                              return RealGradient( -1.0, 0.0, 0.0 );
+                          }
+                        case 1:
+                          {
+                            return RealGradient();
+                          }
+                        case 2:
+                          {
+                            if (elem->point(0) > elem->point(2))
+                              return RealGradient( 0.0, 1.0, 0.0 );
+                            else
+                              return RealGradient( 0.0, -1.0, 0.0 );
+                          }
+                        case 3:
+                          {
+                            if (elem->point(0) > elem->point(3))
+                              return RealGradient( -1.0, -1.0, 0.0 );
+                            else
+                              return RealGradient( 1.0, 1.0, 0.0 );
+                          }
+                        case 4:
+                          {
+                            if (elem->point(1) > elem->point(3))
+                              return RealGradient( 1.0, 0.0, 0.0 );
+                            else
+                              return RealGradient( -1.0, 0.0, 0.0 );
+                          }
+                        case 5:
+                          {
+                            if (elem->point(2) > elem->point(3))
+                              return RealGradient( 0.0, 1.0, 0.0 );
+                            else
+                              return RealGradient( 0.0, -1.0, 0.0 );
+                          }
+                      default:
+                        libmesh_error_msg("Invalid i = " << i);
+                      } // switch(i)
+                  } // j = 2
+
+                default:
+                  libmesh_error_msg("Invalid j = " << j);
+                }
               return RealGradient();
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << Utility::enum_to_string(elem->type()));
           }
       }
-
       // unsupported order
     default:
       libmesh_error_msg("ERROR: Unsupported 3D FE order!: " << totalorder);
@@ -739,15 +944,14 @@ RealGradient FE<3,NEDELEC_ONE>::shape_second_deriv(const Elem * elem,
             }
 
           case TET10:
+          case TET14:
             {
               libmesh_assert_less (i, 6);
-
-              libmesh_not_implemented();
               return RealGradient();
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 3D element type!: " << Utility::enum_to_string(elem->type()));
 
           } //switch(type)
 

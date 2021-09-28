@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -254,17 +254,23 @@ void DofMap::set_error_on_constraint_loop(bool error_on_constraint_loop)
 
 void DofMap::add_variable_group (const VariableGroup & var_group)
 {
-  const unsigned int vg = cast_int<unsigned int>(_variable_groups.size());
+  // Ensure that we are not duplicating an existing entry in _variable_groups
+  if (std::find(_variable_groups.begin(), _variable_groups.end(), var_group) == _variable_groups.end())
+  {
+   const unsigned int vg = cast_int<unsigned int>(_variable_groups.size());
 
-  _variable_groups.push_back(var_group);
+   _variable_groups.push_back(var_group);
 
-  VariableGroup & new_var_group = _variable_groups.back();
+    VariableGroup & new_var_group = _variable_groups.back();
 
-  for (auto var : make_range(new_var_group.n_variables()))
+    for (auto var : make_range(new_var_group.n_variables()))
     {
       _variables.push_back (new_var_group(var));
       _variable_group_numbers.push_back (vg);
     }
+  }
+  // End if check for var_group in _variable_groups
+
 }
 
 
@@ -627,11 +633,11 @@ void DofMap::reinit(MeshBase & mesh)
           if (!vg_description.active_on_subdomain(elem->subdomain_id()))
             continue;
 
-          const ElemType type = elem->type();
-
           FEType fe_type = base_fe_type;
 
 #ifdef LIBMESH_ENABLE_AMR
+          const ElemType type = elem->type();
+
           // Make sure we haven't done more p refinement than we can
           // handle
           if (elem->p_level() + base_fe_type.order >
@@ -1737,7 +1743,7 @@ void DofMap::set_implicit_neighbor_dofs(bool implicit_neighbor_dofs)
 }
 
 
-bool DofMap::use_coupled_neighbor_dofs(const MeshBase & mesh) const
+bool DofMap::use_coupled_neighbor_dofs(const MeshBase & /*mesh*/) const
 {
   // If we were asked on the command line, then we need to
   // include sensitivities between neighbor degrees of freedom
@@ -1781,8 +1787,7 @@ bool DofMap::use_coupled_neighbor_dofs(const MeshBase & mesh) const
     bool all_discontinuous_dofs = true;
 
     for (auto var : make_range(this->n_variables()))
-      if (FEAbstract::build (mesh.mesh_dimension(),
-                             this->variable_type(var))->get_continuity() !=  DISCONTINUOUS)
+      if (FEInterface::get_continuity(this->variable_type(var)) !=  DISCONTINUOUS)
         all_discontinuous_dofs = false;
 
     if (all_discontinuous_dofs)

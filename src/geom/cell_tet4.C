@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -131,6 +131,12 @@ bool Tet4::is_child_on_side(const unsigned int /*c*/,
 
 
 
+bool Tet4::has_invertible_map(Real tol) const
+{
+  return this->volume() > tol;
+}
+
+
 
 bool Tet4::is_node_on_side(const unsigned int n,
                            const unsigned int s) const
@@ -178,10 +184,16 @@ void Tet4::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Tet4::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
-
-  return libmesh_make_unique<SideEdge<Edge2,Tet4>>(this,i);
+  return this->simple_build_edge_ptr<Edge2,Tet4>(i);
 }
+
+
+
+void Tet4::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Tet4>(edge, i, EDGE2);
+}
+
 
 
 void Tet4::connectivity(const unsigned int libmesh_dbg_var(sc),
@@ -228,7 +240,7 @@ void Tet4::connectivity(const unsigned int libmesh_dbg_var(sc),
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::num_nodes] =
+const Real Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -306,6 +318,13 @@ const float Tet4::_embedding_matrix[Tet4::num_children][Tet4::num_nodes][Tet4::n
 #endif // #ifdef LIBMESH_ENABLE_AMR
 
 
+
+
+
+Point Tet4::true_centroid () const
+{
+  return Elem::vertex_average();
+}
 
 
 
@@ -399,9 +418,9 @@ bool Tet4::contains_point (const Point & p, Real tol) const
 
 
 #ifdef LIBMESH_ENABLE_AMR
-float Tet4::embedding_matrix (const unsigned int i,
-                              const unsigned int j,
-                              const unsigned int k) const
+Real Tet4::embedding_matrix (const unsigned int i,
+                             const unsigned int j,
+                             const unsigned int k) const
 {
   // Choose an optimal diagonal, if one has not already been selected
   this->choose_diagonal();
@@ -567,5 +586,35 @@ float Tet4::embedding_matrix (const unsigned int i,
 //   reselect_diagonal (use_this);
 // }
 #endif // #ifdef LIBMESH_ENABLE_AMR
+
+void Tet4::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 12);
+
+  const unsigned int side = perm_num % 4;
+  const unsigned int rotate = perm_num / 4;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap3nodes(0,1,2);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap3nodes(0,2,3);
+    break;
+  case 2:
+    swap3nodes(2,0,3);
+    break;
+  case 3:
+    swap3nodes(2,1,3);
+    break;
+  default:
+    libmesh_error();
+  }
+}
+
 
 } // namespace libMesh

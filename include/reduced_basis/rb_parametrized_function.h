@@ -26,12 +26,14 @@
 // C++ includes
 #include <unordered_map>
 #include <vector>
+#include <map>
 
 namespace libMesh
 {
 
 class RBParameters;
 class Point;
+class System;
 
 /**
  * A simple functor class that provides a RBParameter-dependent function.
@@ -81,8 +83,11 @@ public:
   virtual Number evaluate_comp(const RBParameters & mu,
                                unsigned int comp,
                                const Point & xyz,
+                               dof_id_type elem_id,
+                               unsigned int qp,
                                subdomain_id_type subdomain_id,
-                               const std::vector<Point> & xyz_perturb);
+                               const std::vector<Point> & xyz_perturb,
+                               const std::vector<Real> & phi_i_qp);
 
   /**
    * Evaluate the parametrized function at the specified point for
@@ -93,16 +98,22 @@ public:
    */
   virtual std::vector<Number> evaluate(const RBParameters & mu,
                                        const Point & xyz,
+                                       dof_id_type elem_id,
+                                       unsigned int qp,
                                        subdomain_id_type subdomain_id,
-                                       const std::vector<Point> & xyz_perturb) = 0;
+                                       const std::vector<Point> & xyz_perturb,
+                                       const std::vector<Real> & phi_i_qp) = 0;
 
   /**
    * Vectorized version of evaluate. If requires_xyz_perturbations==false, then all_xyz_perturb will not be used.
    */
   virtual void vectorized_evaluate(const std::vector<RBParameters> & mus,
                                    const std::vector<Point> & all_xyz,
+                                   const std::vector<dof_id_type> & elem_ids,
+                                   const std::vector<unsigned int> & qps,
                                    const std::vector<subdomain_id_type> & sbd_ids,
                                    const std::vector<std::vector<Point>> & all_xyz_perturb,
+                                   const std::vector<std::vector<Real>> & phi_i_qp,
                                    std::vector<std::vector<std::vector<Number>>> & output);
 
   /**
@@ -113,7 +124,8 @@ public:
   virtual void preevaluate_parametrized_function_on_mesh(const RBParameters & mu,
                                                          const std::unordered_map<dof_id_type, std::vector<Point>> & all_xyz,
                                                          const std::unordered_map<dof_id_type, subdomain_id_type> & sbd_ids,
-                                                         const std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > & all_xyz_perturb);
+                                                         const std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > & all_xyz_perturb,
+                                                         const System & sys);
 
   /**
    * Look up the preevaluate values of the parametrized function for
@@ -129,6 +141,25 @@ public:
    * default, but it can be overridden in subclasses as needed.
    */
   virtual void initialize_lookup_table();
+
+  /**
+   * Get the value stored in _parameter_independent_data associated with
+   * \p region_name and \p property_name.
+   */
+  Number get_parameter_independent_data(const std::string & property_name,
+                                        subdomain_id_type sbd_id) const;
+
+  /**
+   * Evaluate the parametrized function for the parameter \p mu at the set of
+   * \p observation_points. We return a vector of values at each observation
+   * point since we may want to evaluate more than one component of the
+   * parametrized function. We also provide \p elem_ids and \p sbd_ids
+   * since that info can be required for the evaluation in some cases.
+   */
+  virtual std::vector<std::vector<Number>> evaluate_at_observation_points(const RBParameters & mu,
+                                                                          const std::vector<Point> & observation_points,
+                                                                          const std::vector<dof_id_type> & elem_ids,
+                                                                          const std::vector<subdomain_id_type> & sbd_ids);
 
   /**
    * Storage for pre-evaluated values. The indexing is given by:
@@ -172,6 +203,17 @@ public:
    * that this function uses finite differencing.
    */
   Real fd_delta;
+
+protected:
+
+  /**
+   * In some cases we need to store parameter-independent data which is related
+   * to this function but since it is parameter-indepedent should not be returned
+   * as part of evaluate().
+   *
+   * We index this data by "property name" --> subdomain_id --> value.
+   */
+  std::map<std::string, std::map<subdomain_id_type, Number>> _parameter_independent_data;
 };
 
 }

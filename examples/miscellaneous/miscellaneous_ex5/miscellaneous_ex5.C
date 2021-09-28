@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -508,6 +508,9 @@ int main (int argc, char** argv)
   //Parse the input file
   GetPot input_file("miscellaneous_ex5.in");
 
+  // But allow the command line to override it.
+  input_file.parse_command_line(argc, argv);
+
   //Read in parameters from the input file
   const unsigned int adaptive_refinement_steps = input_file("max_adaptive_r_steps", 3);
   const unsigned int uniform_refinement_steps  = input_file("uniform_h_r_steps", 3);
@@ -520,6 +523,7 @@ int main (int argc, char** argv)
   const Real penalty                           = input_file("ip_penalty", 10.);
   const bool singularity                       = input_file("singularity", true);
   const unsigned int dim                       = input_file("dimension", 3);
+  const std::string fe_family                  = input_file("fe_family", "MONOMIAL");
 
   // Skip higher-dimensional examples on a lower-dimensional libMesh build
   libmesh_example_requires(dim <= LIBMESH_DIM, "2D/3D support");
@@ -564,19 +568,7 @@ int main (int argc, char** argv)
   LinearImplicitSystem & ellipticdg_system = equation_system.add_system<LinearImplicitSystem> ("EllipticDG");
 
   // Add a variable "u" to "ellipticdg" using the p_order specified in the config file
-  if (on_command_line("element_type"))
-    {
-      std::string fe_str =
-        command_line_value(std::string("element_type"),
-                           std::string("MONOMIAL"));
-
-      libmesh_error_msg_if(fe_str != "MONOMIAL" || fe_str != "XYZ",
-                           "Error: This example must be run with MONOMIAL or XYZ element types.");
-
-      ellipticdg_system.add_variable ("u", p_order, Utility::string_to_enum<FEFamily>(fe_str));
-    }
-  else
-    ellipticdg_system.add_variable ("u", p_order, MONOMIAL);
+  ellipticdg_system.add_variable ("u", p_order, Utility::string_to_enum<FEFamily>(fe_family));
 
   // Give the system a pointer to the matrix assembly function
   ellipticdg_system.attach_assemble_function (assemble_ellipticdg);

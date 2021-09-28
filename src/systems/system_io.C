@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -290,16 +290,26 @@ void System::read_header (Xdr & io,
       if (this->processor_id() == 0)
         io.data (vec_name);
       this->comm().broadcast(vec_name);
-
-      if (read_additional_data)
+      if (io.version() >= LIBMESH_VERSION_ID(1,7,0))
         {
+          int vec_projection;
+          if (this->processor_id() == 0)
+            io.data (vec_projection);
+          this->comm().broadcast(vec_projection);
+          int vec_type;
+          if (this->processor_id() == 0)
+            io.data (vec_type);
+          this->comm().broadcast(vec_type);
+
+          if (read_additional_data)
+            this->add_vector(vec_name, bool(vec_projection), ParallelType(vec_type));
+        }
+      else if (read_additional_data)
           // Systems now can handle adding post-initialization vectors
           //  libmesh_assert(this->_can_add_vectors);
           // Some systems may have added their own vectors already
           //  libmesh_assert_equal_to (this->_vectors.count(vec_name), 0);
-
-          this->add_vector(vec_name);
-        }
+        this->add_vector(vec_name);
     }
 }
 
@@ -908,20 +918,34 @@ std::size_t System::read_serialized_blocked_dof_objects (const dof_id_type n_obj
       ids.clear(); /**/ ids.reserve (xfer_ids_size[blk]);
       vals.resize(recv_vals_size[blk]);
 
+#ifdef DEBUG
+      std::unordered_set<dof_id_type> seen_ids;
+#endif
+
       if (recv_vals_size[blk] != 0) // only if there are nonzero values to receive
         for (iterator_type it=begin; it!=end; ++it)
-          if (((*it)->id() >= first_object) && // object in [first_object,last_object)
-              ((*it)->id() <   last_object))
-            {
-              ids.push_back((*it)->id());
+          {
+            dof_id_type id = (*it)->id();
+#ifdef DEBUG
+            // Any renumbering tricks should not have given us any
+            // duplicate ids.
+            libmesh_assert(!seen_ids.count(id));
+            seen_ids.insert(id);
+#endif
 
-              unsigned int n_comp_tot=0;
+            if ((id >= first_object) && // object in [first_object,last_object)
+                (id <   last_object))
+              {
+                ids.push_back(id);
 
-              for (const auto & var : vars_to_read)
-                n_comp_tot += (*it)->n_comp(sys_num, var);
+                unsigned int n_comp_tot=0;
 
-              ids.push_back (n_comp_tot*num_vecs);
-            }
+                for (const auto & var : vars_to_read)
+                  n_comp_tot += (*it)->n_comp(sys_num, var);
+
+                ids.push_back (n_comp_tot*num_vecs);
+              }
+          }
 
 #ifdef LIBMESH_HAVE_MPI
       id_tags[blk]  = this->comm().get_unique_tag(100*num_blks + blk);
@@ -1484,12 +1508,19 @@ void System::write_header (Xdr & io,
             // 9.)
             // write the name of the cnt-th additional vector
             comment =  "# Name of ";
-            std::sprintf(buf, "%d", cnt++);
+            std::sprintf(buf, "%dth vector", cnt++);
             comment += buf;
-            comment += "th vector";
             std::string vec_name = pr.first;
 
             io.data (vec_name, comment.c_str());
+            int vec_projection = _vector_projections.at(vec_name);
+            comment = "# Whether to do projections for ";
+            comment += buf;
+            io.data (vec_projection, comment.c_str());
+            int vec_type = _vector_types.at(vec_name);
+            comment = "# Parallel type of ";
+            comment += buf;
+            io.data (vec_type, comment.c_str());
           }
       }
   }

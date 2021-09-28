@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -125,6 +125,7 @@ void GhostPointNeighbors::operator()
               if (!equal_level_periodic_neigh || equal_level_periodic_neigh == remote_elem)
                 continue;
 
+#ifdef LIBMESH_ENABLE_AMR
               equal_level_periodic_neigh->active_family_tree_by_topological_neighbor(
                 active_periodic_neighbors,
                 elem,
@@ -132,6 +133,9 @@ void GhostPointNeighbors::operator()
                 *point_locator,
                 _periodic_bcs,
                 /*reset=*/true);
+#else
+              active_periodic_neighbors = { equal_level_periodic_neigh };
+#endif
 
               for (const Elem * const active_periodic_neigh : active_periodic_neighbors)
                 {

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -371,11 +371,6 @@ std::pair<Real, Real> Quad::qual_bounds (const ElemQuality q) const
       bounds.second = 4.;
       break;
 
-    case SKEW:
-      bounds.first  = 0.;
-      bounds.second = 0.5;
-      break;
-
     case TAPER:
       bounds.first  = 0.;
       bounds.second = 0.7;
@@ -413,6 +408,7 @@ std::pair<Real, Real> Quad::qual_bounds (const ElemQuality q) const
 
     case SHEAR:
     case SHAPE:
+    case SKEW:
     case SIZE:
       bounds.first  = 0.3;
       bounds.second = 1.;

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,7 @@
 #include "libmesh/enum_elem_type.h"
 #include "libmesh/boundary_info.h"
 #include "libmesh/dof_map.h"
-#include "libmesh/mapvector.h"
+#include "libmesh/distributed_mesh.h"
 
 namespace libMesh
 {
@@ -52,15 +52,31 @@ evaluable<T>::operator()(const T & it) const
   return _dof_map.is_evaluable(**it, _var_num);
 }
 
+template <typename T>
+bool
+multi_evaluable<T>::operator()(const T & it) const
+{
+  for (const auto * const dof_map : _dof_maps)
+  {
+    libmesh_assert(dof_map);
+    if (!dof_map->is_evaluable(**it))
+      return false;
+  }
+
+  return true;
+}
+
 
 // Instantiate with the useful values of T
-#define INSTANTIATE_NODAL_PREDICATES(IterType)                          \
-  template bool bid<IterType>::operator()(const IterType &) const;      \
-  template bool bnd<IterType>::operator()(const IterType &) const;      \
-  template bool evaluable<IterType>::operator()(const IterType &) const
+#define INSTANTIATE_NODAL_PREDICATES(IterType)                                \
+  template bool bid<IterType>::operator()(const IterType &) const;            \
+  template bool bnd<IterType>::operator()(const IterType &) const;            \
+  template bool evaluable<IterType>::operator()(const IterType &) const;      \
+  template bool multi_evaluable<IterType>::operator()(const IterType &) const
 
-#define INSTANTIATE_ELEM_PREDICATES(IterType)                           \
-  template bool evaluable<IterType>::operator()(const IterType &) const
+#define INSTANTIATE_ELEM_PREDICATES(IterType)                                 \
+  template bool evaluable<IterType>::operator()(const IterType &) const;      \
+  template bool multi_evaluable<IterType>::operator()(const IterType &) const
 
 // Handle commas in macro arguments
 #define LIBMESH_COMMA ,
@@ -71,10 +87,10 @@ INSTANTIATE_ELEM_PREDICATES(std::vector<Elem *>::iterator);
 INSTANTIATE_ELEM_PREDICATES(std::vector<Elem *>::const_iterator);
 INSTANTIATE_NODAL_PREDICATES(std::vector<Node *>::iterator);
 INSTANTIATE_NODAL_PREDICATES(std::vector<Node *>::const_iterator);
-INSTANTIATE_ELEM_PREDICATES(mapvector<Elem * LIBMESH_COMMA dof_id_type>::veclike_iterator);
-INSTANTIATE_ELEM_PREDICATES(mapvector<Elem * LIBMESH_COMMA dof_id_type>::const_veclike_iterator);
-INSTANTIATE_NODAL_PREDICATES(mapvector<Node * LIBMESH_COMMA dof_id_type>::veclike_iterator);
-INSTANTIATE_NODAL_PREDICATES(mapvector<Node * LIBMESH_COMMA dof_id_type>::const_veclike_iterator);
+INSTANTIATE_ELEM_PREDICATES(DistributedMesh::dofobject_container<Elem>::veclike_iterator);
+INSTANTIATE_ELEM_PREDICATES(DistributedMesh::dofobject_container<Elem>::const_veclike_iterator);
+INSTANTIATE_NODAL_PREDICATES(DistributedMesh::dofobject_container<Node>::veclike_iterator);
+INSTANTIATE_NODAL_PREDICATES(DistributedMesh::dofobject_container<Node>::const_veclike_iterator);
 
 
 } // namespace Predicates

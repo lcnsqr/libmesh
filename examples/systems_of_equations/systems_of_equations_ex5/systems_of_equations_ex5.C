@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -100,10 +100,19 @@ int main (int argc, char ** argv)
   libmesh_example_requires(false, "--enable-dirichlet");
 #endif
 
+  // Get the mesh size from the command line.
+  GetPot command_line (argc, argv);
+
+  int nx = 50, ny = 10;
+  if (command_line.search(1, "-nx"))
+    nx = command_line.next(nx);
+  if (command_line.search(1, "-ny"))
+    ny = command_line.next(ny);
+
   // Create a 2D mesh distributed across the default MPI communicator.
   Mesh mesh(init.comm(), dim);
   MeshTools::Generation::build_square (mesh,
-                                       50, 10,
+                                       nx, ny,
                                        0., 1.,
                                        0., 0.2,
                                        QUAD9);

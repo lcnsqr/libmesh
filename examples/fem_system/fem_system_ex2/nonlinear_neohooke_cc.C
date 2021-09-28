@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -106,13 +106,13 @@ void NonlinearNeoHookeCurrentConfig::get_residual(DenseVector<Real> & residuum,
 void NonlinearNeoHookeCurrentConfig::tensor_to_voigt(const RealTensor & tensor,
                                                      DenseVector<Real> & vec)
 {
-  vec(0) = tensor(0, 0);
-  vec(1) = tensor(1, 1);
-  vec(2) = tensor(2, 2);
-  vec(3) = tensor(0, 1);
-  vec(4) = tensor(1, 2);
-  vec(5) = tensor(0, 2);
-
+  vec = {
+    tensor(0, 0),
+    tensor(1, 1),
+    tensor(2, 2),
+    tensor(0, 1),
+    tensor(1, 2),
+    tensor(0, 2)};
 }
 
 void NonlinearNeoHookeCurrentConfig::get_linearized_stiffness(DenseMatrix<Real> & stiffness,

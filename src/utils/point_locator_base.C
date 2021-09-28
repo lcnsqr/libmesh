@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -22,6 +22,7 @@
 #include "libmesh/point_locator_tree.h"
 #include "libmesh/elem.h"
 #include "libmesh/enum_point_locator_type.h"
+#include "libmesh/point_locator_nanoflann.h"
 
 namespace libMesh
 {
@@ -79,6 +80,11 @@ std::unique_ptr<PointLocatorBase> PointLocatorBase::build (PointLocatorType t,
 
     case TREE_LOCAL_ELEMENTS:
       return libmesh_make_unique<PointLocatorTree>(mesh, Trees::LOCAL_ELEMENTS, master);
+
+#ifdef LIBMESH_HAVE_NANOFLANN
+    case NANOFLANN:
+      return libmesh_make_unique<PointLocatorNanoflann>(mesh, master);
+#endif
 
     default:
       libmesh_error_msg("ERROR: Bad PointLocatorType = " << t);

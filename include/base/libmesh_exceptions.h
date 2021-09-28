@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -124,7 +124,7 @@ public:
   /**
    * Override the what() function to provide a generic error message.
    */
-  virtual const char * what() const noexcept
+  virtual const char * what() const noexcept override
   {
     // std::string::c_str() is noexcept in C++11, so it's safe to call
     // in what() because it can't throw.

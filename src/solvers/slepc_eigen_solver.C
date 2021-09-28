@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -31,6 +31,14 @@
 #include "libmesh/solver_configuration.h"
 #include "libmesh/enum_eigen_solver_type.h"
 #include "libmesh/petsc_shell_matrix.h"
+
+// PETSc 3.15 includes a non-release SLEPc 3.14.2 that has already
+// deprecated STPrecondSetMatForPC but that hasn't upgraded its
+// version number to let us switch to the non-deprecated version.  If
+// we're in that situation we need to ignore the deprecated warning.
+#if SLEPC_VERSION_LESS_THAN(3,15,0) && !SLEPC_VERSION_LESS_THAN(3,14,2)
+#include "libmesh/ignore_warnings.h"
+#endif
 
 namespace libMesh
 {
@@ -266,7 +274,12 @@ SlepcEigenSolver<T>::_solve_standard_helper(Mat mat,
   // Set a preconditioning matrix to ST
   if (precond) {
     ierr = EPSGetST(_eps,&st);LIBMESH_CHKERR(ierr);
-    ierr = STPrecondSetMatForPC(st,precond);LIBMESH_CHKERR(ierr);
+#if SLEPC_VERSION_LESS_THAN(3,15,0)
+    ierr = STPrecondSetMatForPC(st, precond);
+#else
+    ierr = STSetPreconditionerMat(st, precond);
+#endif
+    LIBMESH_CHKERR(ierr);
   }
 
   // If the SolverConfiguration object is provided, use it to override
@@ -646,7 +659,12 @@ SlepcEigenSolver<T>::_solve_generalized_helper (Mat mat_A,
   // Set a preconditioning matrix to ST
   if (precond) {
     ierr = EPSGetST(_eps,&st);LIBMESH_CHKERR(ierr);
-    ierr = STPrecondSetMatForPC(st,precond);LIBMESH_CHKERR(ierr);
+#if SLEPC_VERSION_LESS_THAN(3,15,0)
+    ierr = STPrecondSetMatForPC(st, precond);
+#else
+    ierr = STSetPreconditionerMat(st, precond);
+#endif
+    LIBMESH_CHKERR(ierr);
   }
 
   // If the SolverConfiguration object is provided, use it to override
@@ -1050,6 +1068,11 @@ template class SlepcEigenSolver<Number>;
 
 } // namespace libMesh
 
+
+// In case we do unity builds someday
+#if SLEPC_VERSION_LESS_THAN(3,15,0) && !SLEPC_VERSION_LESS_THAN(3,14,2)
+#include "libmesh/restore_warnings.h"
+#endif
 
 
 #endif // #ifdef LIBMESH_HAVE_SLEPC

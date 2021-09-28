@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -385,8 +385,8 @@ void System::project_vector (const NumericVector<Number> & old_v,
                          OldSolutionValue<Gradient, &FEMContext::point_gradient>,
                          Number, VectorSetAction<Number>> FEMProjector;
 
-      OldSolutionValue<Number,   &FEMContext::point_value>    f(*this, old_vector);
-      OldSolutionValue<Gradient, &FEMContext::point_gradient> g(*this, old_vector);
+      OldSolutionValue<Number,   &FEMContext::point_value>    f(*this, old_vector, &regular_vars);
+      OldSolutionValue<Gradient, &FEMContext::point_gradient> g(*this, old_vector, &regular_vars);
       VectorSetAction<Number> setter(new_vector);
 
       FEMProjector projector(*this, f, &g, setter, regular_vars);
@@ -397,8 +397,8 @@ void System::project_vector (const NumericVector<Number> & old_v,
                          OldSolutionValue<Tensor, &FEMContext::point_gradient>,
                          Gradient, VectorSetAction<Number>> FEMVectorProjector;
 
-      OldSolutionValue<Gradient, &FEMContext::point_value> f_vector(*this, old_vector);
-      OldSolutionValue<Tensor, &FEMContext::point_gradient> g_vector(*this, old_vector);
+      OldSolutionValue<Gradient, &FEMContext::point_value> f_vector(*this, old_vector, &vector_vars);
+      OldSolutionValue<Tensor, &FEMContext::point_gradient> g_vector(*this, old_vector, &vector_vars);
 
       FEMVectorProjector vector_projector(*this, f_vector, &g_vector, setter, vector_vars);
       vector_projector.project(active_local_elem_range);
@@ -518,14 +518,15 @@ public:
   typedef DSNA ValuePushType;
   typedef DSNA FunctorValue;
 
-  OldSolutionCoefs(const libMesh::System & sys_in) :
-    OldSolutionBase<Output, point_output>(sys_in)
+  OldSolutionCoefs(const libMesh::System & sys_in,
+                   const std::vector<unsigned int> * vars) :
+    OldSolutionBase<Output, point_output>(sys_in, vars)
   {
     this->old_context.set_algebraic_type(FEMContext::OLD_DOFS_ONLY);
   }
 
   OldSolutionCoefs(const OldSolutionCoefs & in) :
-    OldSolutionBase<Output, point_output>(in.sys)
+    OldSolutionBase<Output, point_output>(in.sys, in.old_context.active_vars())
   {
     this->old_context.set_algebraic_type(FEMContext::OLD_DOFS_ONLY);
   }
@@ -974,8 +975,8 @@ void System::projection_matrix (SparseMatrix<Number> & proj_mat) const
                          DynamicSparseNumberArray<Real,dof_id_type>,
                          MatrixFillAction<Real, Number> > ProjMatFiller;
 
-      OldSolutionValueCoefs    f(*this);
-      OldSolutionGradientCoefs g(*this);
+      OldSolutionValueCoefs    f(*this, &vars);
+      OldSolutionGradientCoefs g(*this, &vars);
       MatrixFillAction<Real, Number> setter(proj_mat);
 
       ProjMatFiller mat_filler(*this, f, &g, setter, vars);

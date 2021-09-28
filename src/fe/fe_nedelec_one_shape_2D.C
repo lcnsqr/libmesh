@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,11 +16,10 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// C++ includes
-
 // Local includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -99,6 +98,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape(const Elem * elem,
             }
 
           case TRI6:
+          case TRI7:
             {
               const Real xi  = p(0);
               const Real eta = p(1);
@@ -136,7 +136,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << Utility::enum_to_string(elem->type()));
           }
       }
 
@@ -264,6 +264,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape_deriv(const Elem * elem,
             }
 
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 3);
 
@@ -312,7 +313,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << Utility::enum_to_string(elem->type()));
           }
       }
       // unsupported order
@@ -389,6 +390,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape_second_deriv(const Elem * elem,
             }
 
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 3);
               // All second derivatives for linear triangles are zero.
@@ -396,7 +398,7 @@ RealGradient FE<2,NEDELEC_ONE>::shape_second_deriv(const Elem * elem,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << elem->type());
+            libmesh_error_msg("ERROR: Unsupported 2D element type!: " << Utility::enum_to_string(elem->type()));
 
           } // end switch (type)
       } // end case FIRST

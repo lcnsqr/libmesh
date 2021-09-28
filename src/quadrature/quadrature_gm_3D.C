@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,7 @@ void QGrundmann_Moller::init_3D(const ElemType, unsigned int)
     {
     case TET4:
     case TET10:
+    case TET14:
       {
         switch(get_order())
           {
@@ -155,7 +156,7 @@ void QGrundmann_Moller::init_3D(const ElemType, unsigned int)
               return;
             }
           } // end switch (order)
-      } // end case TET4, TET10
+      } // end case TET
 
     default:
       libmesh_error_msg("ERROR: Unsupported element type: " << Utility::enum_to_string(_type));

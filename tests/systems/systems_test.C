@@ -26,10 +26,12 @@
 #include <libmesh/face_quad8.h>
 #include <libmesh/face_tri3.h>
 #include <libmesh/face_tri6.h>
+#include <libmesh/face_tri7.h>
 #include <libmesh/cell_hex8.h>
 #include <libmesh/cell_hex20.h>
 #include <libmesh/cell_hex27.h>
 #include <libmesh/cell_tet10.h>
+#include <libmesh/cell_tet14.h>
 #include <libmesh/boundary_info.h>
 
 #include "test_comm.h"
@@ -438,9 +440,11 @@ public:
 #if LIBMESH_DIM > 1
   CPPUNIT_TEST( testProjectHierarchicQuad9 );
   CPPUNIT_TEST( testProjectHierarchicTri6 );
+  CPPUNIT_TEST( testProjectHierarchicTri7 );
   CPPUNIT_TEST( test2DProjectVectorFETri3 );
   CPPUNIT_TEST( test2DProjectVectorFEQuad4 );
   CPPUNIT_TEST( test2DProjectVectorFETri6 );
+  CPPUNIT_TEST( test2DProjectVectorFETri7 );
   CPPUNIT_TEST( test2DProjectVectorFEQuad8 );
   CPPUNIT_TEST( test2DProjectVectorFEQuad9 );
 #ifdef LIBMESH_HAVE_SOLVER
@@ -454,6 +458,7 @@ public:
   CPPUNIT_TEST( test3DProjectVectorFETet4 );
   CPPUNIT_TEST( test3DProjectVectorFEHex8 );
   CPPUNIT_TEST( test3DProjectVectorFETet10 );
+  CPPUNIT_TEST( test3DProjectVectorFETet14 );
   CPPUNIT_TEST( test3DProjectVectorFEHex20 );
   CPPUNIT_TEST( test3DProjectVectorFEHex27 );
 #ifdef LIBMESH_HAVE_SOLVER
@@ -1120,14 +1125,14 @@ public:
                                       0., 0.,
                                       QUAD4);
 
-    auto el_beg = mesh.elements_begin();
-    auto el_end = mesh.elements_end();
-    auto el = mesh.elements_begin();
-    for (; el != el_end; ++el)
-      if ((*el)->centroid()(0) <= 0.5 && (*el)->centroid()(1) <= 0.5)
-        (*el)->subdomain_id() = 0;
-      else
-        (*el)->subdomain_id() = 1;
+    for (const auto & elem : mesh.element_ptr_range())
+      {
+        Point c = elem->vertex_average();
+        if (c(0) <= 0.5 && c(1) <= 0.5)
+          elem->subdomain_id() = 0;
+        else
+          elem->subdomain_id() = 1;
+      }
 
     mesh.prepare_for_use();
 
@@ -1632,16 +1637,19 @@ public:
   void testProjectHierarchicEdge3() { testProjectLine(EDGE3); }
   void testProjectHierarchicQuad9() { testProjectSquare(QUAD9); }
   void testProjectHierarchicTri6()  { testProjectSquare(TRI6); }
+  void testProjectHierarchicTri7()  { testProjectSquare(TRI7); }
   void testProjectHierarchicHex27() { testProjectCube(HEX27); }
   void testProjectMeshFunctionHex27() { testProjectCubeWithMeshFunction(HEX27); }
   void test2DProjectVectorFETri3() { test2DProjectVectorFE(TRI3); }
   void test2DProjectVectorFEQuad4() { test2DProjectVectorFE(QUAD4); }
   void test2DProjectVectorFETri6() { test2DProjectVectorFE(TRI6); }
+  void test2DProjectVectorFETri7() { test2DProjectVectorFE(TRI7); }
   void test2DProjectVectorFEQuad8() { test2DProjectVectorFE(QUAD8); }
   void test2DProjectVectorFEQuad9() { test2DProjectVectorFE(QUAD9); }
   void test3DProjectVectorFETet4() { test3DProjectVectorFE(TET4); }
   void test3DProjectVectorFEHex8() { test3DProjectVectorFE(HEX8); }
   void test3DProjectVectorFETet10() { test3DProjectVectorFE(TET10); }
+  void test3DProjectVectorFETet14() { test3DProjectVectorFE(TET14); }
   void test3DProjectVectorFEHex20() { test3DProjectVectorFE(HEX20); }
   void test3DProjectVectorFEHex27() { test3DProjectVectorFE(HEX27); }
 

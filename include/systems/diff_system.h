@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -161,8 +161,8 @@ public:
   virtual std::unique_ptr<DifferentiablePhysics> clone_physics() override
   {
     libmesh_not_implemented();
-    // dummy
-    return std::unique_ptr<DifferentiablePhysics>(this);
+    // dummy to avoid compiler warnings, not a real implementation
+    return std::unique_ptr<DifferentiablePhysics>(nullptr);
   }
 
   /**
@@ -171,8 +171,8 @@ public:
   virtual std::unique_ptr<DifferentiableQoI> clone() override
   {
     libmesh_not_implemented();
-    // dummy
-    return std::unique_ptr<DifferentiableQoI>(this);
+    // dummy to avoid compiler warnings, not a real implementation
+    return std::unique_ptr<DifferentiableQoI>(nullptr);
   }
 
   /**

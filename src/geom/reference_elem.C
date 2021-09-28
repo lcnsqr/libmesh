@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -179,6 +179,7 @@ void init_ref_elem_table()
     // 2D elements
     ref_elem_file[TRI3]     = ElemDataStrings::one_tri;
     ref_elem_file[TRI6]     = ElemDataStrings::one_tri6;
+    ref_elem_file[TRI7]     = ElemDataStrings::one_tri7;
 
     ref_elem_file[QUAD4]    = ElemDataStrings::one_quad;
     ref_elem_file[QUAD8]    = ElemDataStrings::one_quad8;
@@ -191,6 +192,7 @@ void init_ref_elem_table()
 
     ref_elem_file[TET4]     = ElemDataStrings::one_tet;
     ref_elem_file[TET10]    = ElemDataStrings::one_tet10;
+    ref_elem_file[TET14]    = ElemDataStrings::one_tet14;
 
     ref_elem_file[PRISM6]   = ElemDataStrings::one_prism;
     ref_elem_file[PRISM15]  = ElemDataStrings::one_prism15;

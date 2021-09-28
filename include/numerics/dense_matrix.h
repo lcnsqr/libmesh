@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -44,6 +44,7 @@
 // C++ includes
 #include <vector>
 #include <algorithm>
+#include <initializer_list>
 
 #ifdef LIBMESH_HAVE_METAPHYSICL
 #include "metaphysicl/dualnumber_forward.h"
@@ -86,6 +87,16 @@ public:
    */
   DenseMatrix(const unsigned int new_m=0,
               const unsigned int new_n=0);
+
+  /**
+   * Constructor taking the number of rows, columns, and an
+   * initializer_list, which must be of length nrow * ncol, of
+   * row-major values to initialize the DenseMatrix with.
+   */
+  template <typename T2>
+  DenseMatrix(unsigned int nrow,
+              unsigned int ncol,
+              std::initializer_list<T2> init_list);
 
   /**
    * The 5 special functions can be defaulted for this class, as it
@@ -813,6 +824,7 @@ struct DenseMatrix<double>::UseBlasLapack
 };
 #endif
 
+
 // ------------------------------------------------------------
 // Dense Matrix member functions
 template<typename T>
@@ -825,6 +837,21 @@ DenseMatrix<T>::DenseMatrix(const unsigned int new_m,
   _decomposition_type(NONE)
 {
   this->resize(new_m,new_n);
+}
+
+template <typename T>
+template <typename T2>
+DenseMatrix<T>::DenseMatrix(unsigned int nrow,
+                            unsigned int ncol,
+                            std::initializer_list<T2> init_list) :
+  DenseMatrixBase<T>(nrow, ncol),
+  use_blas_lapack(DenseMatrix<T>::UseBlasLapack::value),
+  _val(init_list.begin(), init_list.end()),
+  _decomposition_type(NONE)
+{
+  // Make sure the user passed us an amount of data which is
+  // consistent with the size of the matrix.
+  libmesh_assert_equal_to(nrow * ncol, init_list.size());
 }
 
 

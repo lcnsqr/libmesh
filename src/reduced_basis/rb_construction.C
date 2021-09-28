@@ -87,7 +87,8 @@ RBConstruction::RBConstruction (EquationSystems & es,
     abs_training_tolerance(1.e-12),
     normalize_rb_bound_in_greedy(false),
     RB_training_type("Greedy"),
-    _preevaluate_thetas_flag(false)
+    _preevaluate_thetas_flag(false),
+    _preevaluate_thetas_completed(false)
 {
   // set assemble_before_solve flag to false
   // so that we control matrix assembly.
@@ -674,20 +675,42 @@ void RBConstruction::add_scaled_matrix_and_vector(Number scalar,
 
   this->init_context(context);
 
+  // It's possible for the assembly loop below to throw an exception
+  // on one (or some subset) of the processors. This can happen when
+  // e.g. the mesh contains one or more elements with negative
+  // Jacobian. In that case, we stop assembling on the processor(s)
+  // that threw and let the other processors finish assembly. Then we
+  // synchronize to check whether an exception was thrown on _any_
+  // processor, and if so, re-throw it on _all_ processors. This way,
+  // we make it easier for callers to handle exceptions in parallel
+  // during assembly: they can simply assume that the code either
+  // throws on all procs or on no procs.
+  int assembly_threw = 0;
+
+  libmesh_try
+  {
+
   for (const auto & elem : mesh.active_local_element_ptr_range())
     {
-      if(elem->type() == NODEELEM)
+      const ElemType elemtype = elem->type();
+
+      if(elemtype == NODEELEM)
         {
-          // We skip NODEELEMs here since we assume that we
-          // do not perform any assembly directly on NODEELEMs
-          continue;
+          // We assume that we do not perform any assembly directly on
+          // NodeElems, so we skip the assembly calls.
+
+          // However, in a spline basis with Dirichlet constraints on
+          // spline nodes, a constrained matrix has to take those
+          // nodes into account.
+          if (!apply_dof_constraints)
+            continue;
         }
 
       // Subdivision elements need special care:
       // - skip ghost elements
       // - init special quadrature rule
       std::unique_ptr<QBase> qrule;
-      if (elem->type() == TRI3SUBDIVISION)
+      if (elemtype == TRI3SUBDIVISION)
         {
           const Tri3Subdivision * gh_elem = static_cast<const Tri3Subdivision *> (elem);
           if (gh_elem->is_ghost())
@@ -706,40 +729,49 @@ void RBConstruction::add_scaled_matrix_and_vector(Number scalar,
         }
 
       context.pre_fe_reinit(*this, elem);
+
+      // Do nothing in case there are no dof_indices on the current element
+      if ( context.get_dof_indices().empty() )
+        continue;
+
       context.elem_fe_reinit();
-      elem_assembly->interior_assembly(context);
 
-      const unsigned char n_sides = context.get_elem().n_sides();
-      for (context.side = 0; context.side != n_sides; ++context.side)
+      if (elemtype != NODEELEM)
         {
-          // May not need to apply fluxes on non-boundary elements
-          if ((context.get_elem().neighbor_ptr(context.get_side()) != nullptr) && !impose_internal_fluxes)
-            continue;
+          elem_assembly->interior_assembly(context);
 
-          // skip degenerate sides with zero area
-          if( (context.get_elem().side_ptr(context.get_side())->volume() <= 0.) && skip_degenerate_sides)
-            continue;
-
-          context.side_fe_reinit();
-          elem_assembly->boundary_assembly(context);
-
-          if (context.dg_terms_are_active())
+          const unsigned char n_sides = context.get_elem().n_sides();
+          for (context.side = 0; context.side != n_sides; ++context.side)
             {
-              input_matrix->add_matrix (context.get_elem_elem_jacobian(),
-                                        context.get_dof_indices(),
-                                        context.get_dof_indices());
+              // May not need to apply fluxes on non-boundary elements
+              if ((context.get_elem().neighbor_ptr(context.get_side()) != nullptr) && !impose_internal_fluxes)
+                continue;
 
-              input_matrix->add_matrix (context.get_elem_neighbor_jacobian(),
-                                        context.get_dof_indices(),
-                                        context.get_neighbor_dof_indices());
+              // skip degenerate sides with zero area
+              if( (context.get_elem().side_ptr(context.get_side())->volume() <= 0.) && skip_degenerate_sides)
+                continue;
 
-              input_matrix->add_matrix (context.get_neighbor_elem_jacobian(),
-                                        context.get_neighbor_dof_indices(),
-                                        context.get_dof_indices());
+              context.side_fe_reinit();
+              elem_assembly->boundary_assembly(context);
 
-              input_matrix->add_matrix (context.get_neighbor_neighbor_jacobian(),
-                                        context.get_neighbor_dof_indices(),
-                                        context.get_neighbor_dof_indices());
+              if (context.dg_terms_are_active())
+                {
+                  input_matrix->add_matrix (context.get_elem_elem_jacobian(),
+                                            context.get_dof_indices(),
+                                            context.get_dof_indices());
+
+                  input_matrix->add_matrix (context.get_elem_neighbor_jacobian(),
+                                            context.get_dof_indices(),
+                                            context.get_neighbor_dof_indices());
+
+                  input_matrix->add_matrix (context.get_neighbor_elem_jacobian(),
+                                            context.get_neighbor_dof_indices(),
+                                            context.get_dof_indices());
+
+                  input_matrix->add_matrix (context.get_neighbor_neighbor_jacobian(),
+                                            context.get_neighbor_dof_indices(),
+                                            context.get_neighbor_dof_indices());
+                }
             }
         }
 
@@ -827,12 +859,32 @@ void RBConstruction::add_scaled_matrix_and_vector(Number scalar,
       if (assemble_vector)
         input_vector->add_vector (context.get_elem_residual(),
                                   context.get_dof_indices() );
-    }
+    } // end for (elem)
 
+  } // libmesh_try
+  libmesh_catch(...)
+  {
+    assembly_threw = 1;
+  }
+
+  // Note: regardless of whether any procs threw during assembly (and
+  // thus didn't finish assembling), we should not leave the matrix
+  // and vector in an inconsistent state, since it may be possible to
+  // recover from the exception. Therefore, we close them now. The
+  // assumption here is that the nature of the exception does not
+  // prevent the matrix and vector from still being assembled (albeit
+  // with incomplete data).
   if (assemble_matrix)
     input_matrix->close();
   if (assemble_vector)
     input_vector->close();
+
+  // Check for exceptions on any procs and if there is one, re-throw
+  // it on all procs.
+  this->comm().max(assembly_threw);
+
+  if (assembly_threw)
+    libmesh_error_msg("Error during assembly in RBConstruction::add_scaled_matrix_and_vector()");
 }
 
 void RBConstruction::set_context_solution_vec(NumericVector<Number> & vec)
@@ -1247,7 +1299,7 @@ void RBConstruction::enrich_basis_from_rhs_terms(const bool resize_rb_eval_data)
 
       // Debugging: enable this code to print the rhs that was used in
       // the most recent truth solve to a uniquely-named file.
-      if (false)
+#if 0
         {
           char temp_file[] = "truth_rhs_XXXXXX.dat";
           int fd = mkstemps(temp_file, 4);
@@ -1257,11 +1309,12 @@ void RBConstruction::enrich_basis_from_rhs_terms(const bool resize_rb_eval_data)
               rhs->print_matlab(std::string(temp_file));
             }
         }
+#endif // 0
 
       // Debugging: enable this code to print the most recent truth
       // solution to a uniquely-named file.
 #ifdef LIBMESH_HAVE_EXODUS_API
-      if (false)
+#if 0
         {
           // Note: mkstemps creates a file and returns an open file descriptor to it.
           // The filename is created from a template which must have 6 'X' characters followed
@@ -1277,7 +1330,8 @@ void RBConstruction::enrich_basis_from_rhs_terms(const bool resize_rb_eval_data)
                                             this->get_equation_systems(), &system_names);
             }
         }
-#endif
+#endif // 0
+#endif // LIBMESH_HAVE_EXODUS_API
 
       // Call user-defined post-processing routines on the truth solution.
       post_process_truth_solution();
@@ -2589,6 +2643,10 @@ void RBConstruction::preevaluate_thetas()
 
   _evaluated_thetas.resize(get_local_n_training_samples());
 
+  // Early return if we've already preevaluated thetas.
+  if (_preevaluate_thetas_completed)
+    return;
+
   if ( get_local_n_training_samples() == 0 )
     return;
 
@@ -2622,6 +2680,13 @@ void RBConstruction::preevaluate_thetas()
       for (auto i : make_range(get_local_n_training_samples()))
         _evaluated_thetas[i][n_A_terms + q_f] = F_vals[i];
     }
+
+  _preevaluate_thetas_completed = true;
+}
+
+void RBConstruction::reset_preevaluate_thetas_completed()
+{
+  _preevaluate_thetas_completed = false;
 }
 
 } // namespace libMesh

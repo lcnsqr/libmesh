@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -36,7 +36,7 @@ const int Edge2::nodes_per_edge;
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Edge2::_embedding_matrix[Edge2::num_children][Edge2::num_nodes][Edge2::num_nodes] =
+const Real Edge2::_embedding_matrix[Edge2::num_children][Edge2::num_nodes][Edge2::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -93,6 +93,13 @@ Order Edge2::default_order() const
 
 
 
+bool Edge2::has_invertible_map(Real tol) const
+{
+  return this->volume() > tol;
+}
+
+
+
 void Edge2::connectivity(const unsigned int libmesh_dbg_var(sc),
                          const IOPackage iop,
                          std::vector<dof_id_type> & conn) const
@@ -125,6 +132,11 @@ void Edge2::connectivity(const unsigned int libmesh_dbg_var(sc),
     }
 }
 
+
+Point Edge2::true_centroid () const
+{
+  return 0.5 * (this->point(0) + this->point(1));
+}
 
 Real Edge2::volume () const
 {

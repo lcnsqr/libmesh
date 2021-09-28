@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -166,6 +166,11 @@ public:
   virtual std::pair<Real, Real> qual_bounds (const ElemQuality q) const override;
 
   virtual std::vector<unsigned int> sides_on_edge(const unsigned int e) const override final;
+
+  /**
+   * Six sides, four orientations per side.
+   */
+  virtual unsigned int n_permutations() const override final { return 24; }
 
 protected:
 

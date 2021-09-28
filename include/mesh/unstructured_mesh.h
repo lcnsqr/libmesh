@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -69,10 +69,17 @@ public:
   UnstructuredMesh(UnstructuredMesh &&) = delete;
 
   /**
-   * Copy and move assignment are not allowed.
+   * Copy assignment is not allowed.
    */
   UnstructuredMesh & operator= (const UnstructuredMesh &) = delete;
-  UnstructuredMesh & operator= (UnstructuredMesh &&) = delete;
+
+  /**
+   * Move assignment is allowed, by subclasses who handle
+   * post_dofobject_moves()
+   */
+  UnstructuredMesh & operator= (UnstructuredMesh && other_mesh) = default;
+
+  virtual MeshBase & assign(MeshBase && other_mesh) override = 0;
 
   /**
    * Destructor.
@@ -133,6 +140,15 @@ public:
   virtual void all_second_order (const bool full_ordered=true) override;
 
   /**
+   * Converts a (conforming, non-refined) mesh with linear elements
+   * into a mesh with "complete" order elements, i.e. elements which
+   * can store degrees of freedom on any vertex, edge, or face.  For
+   * example, a mesh consisting of \p Tet4 or \p Tet10 will be
+   * converted to a mesh with \p Tet14 etc.
+   */
+  virtual void all_complete_order () override;
+
+  /**
    * Generates a new mesh containing all the elements which
    * are assigned to processor \p pid.  This mesh is written
    * to the pid_mesh reference which you must create and pass
@@ -167,6 +183,11 @@ public:
                                         dof_id_type element_id_offset = 0,
                                         dof_id_type node_id_offset = 0,
                                         unique_id_type unique_id_offset = 0);
+
+  /**
+   * Move node and elements from other_mesh to this mesh.
+   */
+  virtual void move_nodes_and_elements(MeshBase && other_mesh) = 0;
 
 
   /**

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -140,29 +140,29 @@ bool Prism18::has_affine_map() const
 {
   // Make sure z edges are affine
   Point v = this->point(3) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(5) - this->point(2)))
+  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(5) - this->point(2), affine_tol))
     return false;
   // Make sure edges are straight
   v /= 2;
-  if (!v.relative_fuzzy_equals(this->point(9) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(10) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(11) - this->point(2)) ||
-      !v.relative_fuzzy_equals(this->point(15) - this->point(6)) ||
-      !v.relative_fuzzy_equals(this->point(16) - this->point(7)) ||
-      !v.relative_fuzzy_equals(this->point(17) - this->point(8)))
+  if (!v.relative_fuzzy_equals(this->point(9) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(10) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(11) - this->point(2), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(15) - this->point(6), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(16) - this->point(7), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(17) - this->point(8), affine_tol))
     return false;
   v = (this->point(1) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(6) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(12) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(6) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(12) - this->point(3), affine_tol))
     return false;
   v = (this->point(2) - this->point(0))/2;
-  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0)) ||
-      !v.relative_fuzzy_equals(this->point(14) - this->point(3)))
+  if (!v.relative_fuzzy_equals(this->point(8) - this->point(0), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(14) - this->point(3), affine_tol))
     return false;
   v = (this->point(2) - this->point(1))/2;
-  if (!v.relative_fuzzy_equals(this->point(7) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(13) - this->point(4)))
+  if (!v.relative_fuzzy_equals(this->point(7) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(13) - this->point(4), affine_tol))
     return false;
   return true;
 }
@@ -242,6 +242,8 @@ std::unique_ptr<Elem> Prism18::build_side_ptr (const unsigned int i,
   std::unique_ptr<Elem> face;
   if (proxy)
     {
+#ifdef LIBMESH_ENABLE_DEPRECATED
+      libmesh_deprecated();
       switch(i)
         {
         case 0:
@@ -262,8 +264,10 @@ std::unique_ptr<Elem> Prism18::build_side_ptr (const unsigned int i,
         default:
           libmesh_error_msg("Invalid side i = " << i);
         }
+#else
+      libmesh_error();
+#endif // LIBMESH_ENABLE_DEPRECATED
     }
-
   else
     {
       switch (i)
@@ -295,6 +299,11 @@ std::unique_ptr<Elem> Prism18::build_side_ptr (const unsigned int i,
 #endif
     face->set_parent(nullptr);
   face->set_interior_parent(this);
+
+  face->subdomain_id() = this->subdomain_id();
+#ifdef LIBMESH_ENABLE_AMR
+  face->set_p_level(this->p_level());
+#endif
 
   return face;
 }
@@ -346,9 +355,14 @@ void Prism18::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Prism18::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge3,Prism18>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge3,Prism18>>(this,i);
+
+
+void Prism18::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Prism18>(edge, i, EDGE3);
 }
 
 
@@ -797,7 +811,7 @@ Real Prism18::volume () const
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Prism18::_embedding_matrix[Prism18::num_children][Prism18::num_nodes][Prism18::num_nodes] =
+const Real Prism18::_embedding_matrix[Prism18::num_children][Prism18::num_nodes][Prism18::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -985,5 +999,49 @@ const float Prism18::_embedding_matrix[Prism18::num_children][Prism18::num_nodes
   };
 
 #endif
+
+
+void
+Prism18::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 6);
+  const unsigned int side = perm_num % 2;
+  const unsigned int rotate = perm_num / 2;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap3nodes(0,1,2);
+      swap3nodes(3,4,5);
+      swap3nodes(6,7,8);
+      swap3nodes(9,10,11);
+      swap3nodes(12,13,14);
+      swap3nodes(15,16,17);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap2nodes(1,3);
+    swap2nodes(0,4);
+    swap2nodes(2,5);
+    swap2nodes(6,12);
+    swap2nodes(9,10);
+    swap2nodes(7,14);
+    swap2nodes(8,13);
+    swap2nodes(16,17);
+    break;
+  default:
+    libmesh_error();
+  }
+}
+
+
+unsigned int Prism18::center_node_on_side(const unsigned short side) const
+{
+  libmesh_assert_less (side, Prism18::num_sides);
+  return (side >= 1 && side <= 3) ? side + 14 : invalid_uint;
+}
+
 
 } // namespace libMesh

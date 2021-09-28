@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -213,7 +213,7 @@ Real VariationalMeshSmoother::smooth(unsigned int)
   _logfile << "Saving Result" << std::endl;
   writegr(R);
 
-  libmesh_assert_greater (_dist_norm, 0);
+  libmesh_assert_greater (_dist_norm, 0.);
   return _dist_norm;
 }
 
@@ -548,13 +548,13 @@ void VariationalMeshSmoother::adjust_adapt_data()
       // Only do this for active elements
       if (adapt_data[i])
         {
-          Point centroid = (*el)->centroid();
+          Point avg = (*el)->vertex_average();
           bool in_aoe = false;
 
-          // See if the elements centroid lies in the aoe mesh
+          // See if the element's vertex average lies in the aoe mesh
           // for (aoe_el=aoe_mesh.elements_begin(); aoe_el != aoe_end_el; ++aoe_el)
           // {
-          if ((*aoe_el)->contains_point(centroid))
+          if ((*aoe_el)->contains_point(avg))
             in_aoe = true;
           // }
 
@@ -950,6 +950,8 @@ void VariationalMeshSmoother::full_smooth(Array2D<Real> & R,
              << " qmin=" << qmin
              << " min volume = " << Vmin
              << std::endl;
+
+  libmesh_error_msg_if(Vmin <= 0., "Found element(s) with negative volume.");
 
   // compute max distortion measure over all cells
   Real epsilon = 1.e-9;

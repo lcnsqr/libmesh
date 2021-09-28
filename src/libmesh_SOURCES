@@ -90,6 +90,7 @@ libmesh_SOURCES =  \
         src/fe/fe_scalar_shape_1D.C \
         src/fe/fe_scalar_shape_2D.C \
         src/fe/fe_scalar_shape_3D.C \
+        src/fe/fe_side_hierarchic.C \
         src/fe/fe_subdivision_2D.C \
         src/fe/fe_szabab.C \
         src/fe/fe_szabab_shape_0D.C \
@@ -141,6 +142,7 @@ libmesh_SOURCES =  \
         src/geom/cell_pyramid5.C \
         src/geom/cell_tet.C \
         src/geom/cell_tet10.C \
+        src/geom/cell_tet14.C \
         src/geom/cell_tet4.C \
         src/geom/edge.C \
         src/geom/edge_edge2.C \
@@ -166,6 +168,7 @@ libmesh_SOURCES =  \
         src/geom/face_tri3_shell.C \
         src/geom/face_tri3_subdivision.C \
         src/geom/face_tri6.C \
+        src/geom/face_tri7.C \
         src/geom/node.C \
         src/geom/node_elem.C \
         src/geom/plane.C \
@@ -242,6 +245,7 @@ libmesh_SOURCES =  \
         src/numerics/eigen_sparse_vector.C \
         src/numerics/laspack_matrix.C \
         src/numerics/laspack_vector.C \
+        src/numerics/lumped_mass_matrix.C \
         src/numerics/numeric_vector.C \
         src/numerics/petsc_matrix.C \
         src/numerics/petsc_preconditioner.C \
@@ -401,6 +405,7 @@ libmesh_SOURCES =  \
         src/systems/fem_system.C \
         src/systems/frequency_system.C \
         src/systems/implicit_system.C \
+        src/systems/inter_mesh_projection.C \
         src/systems/linear_implicit_system.C \
         src/systems/newmark_system.C \
         src/systems/nonlinear_implicit_system.C \
@@ -424,6 +429,7 @@ libmesh_SOURCES =  \
         src/utils/plt_loader_read.C \
         src/utils/plt_loader_write.C \
         src/utils/point_locator_base.C \
+        src/utils/point_locator_nanoflann.C \
         src/utils/point_locator_tree.C \
         src/utils/statistics.C \
         src/utils/string_to_enum.C \

@@ -96,6 +96,11 @@ public:
   RBEIMEvaluation & get_rb_eim_evaluation();
 
   /**
+   * Get a const reference to the RBEvaluation object.
+   */
+  const RBEIMEvaluation & get_rb_eim_evaluation() const;
+
+  /**
    * Perform initialization of this object to prepare for running
    * train_eim_approximation().
    */
@@ -203,6 +208,12 @@ public:
   void store_eim_solutions_for_training_set();
 
   /**
+   * Get a const reference to the specified parametrized function from
+   * the training set.
+   */
+  const QpDataMap & get_parametrized_function_from_training_set(unsigned int training_index) const;
+
+  /**
    * Enum that indicates which type of "best fit" algorithm
    * we should use.
    * a) projection: Find the best fit in the inner product
@@ -220,13 +231,6 @@ private:
   std::pair<Real, unsigned int> compute_max_eim_error();
 
   /**
-   * Compute the maximum (i.e. l-infinity norm) error of the best fit
-   * of the parametrized function at training index \p training_index
-   * into the EIM approximation space.
-   */
-  Real compute_best_fit_error(unsigned int training_index);
-
-  /**
    * Compute and store the parametrized function for each
    * parameter in the training set at all the stored qp locations.
    */
@@ -237,6 +241,15 @@ private:
    * so that we can use this in evaluation of the parametrized functions.
    */
   void initialize_qp_data();
+
+  /**
+   * Initialize the \p elem_ids and \p sbd_ids associated with the observation
+   * points so that we can subsequently evaluate parametrized functions at the
+   * observations points.
+   */
+  void initialize_observation_points_data(
+    std::vector<dof_id_type> & observation_points_elem_ids,
+    std::vector<subdomain_id_type> & observation_points_sbd_ids);
 
   /**
    * Evaluate the inner product of vec1 and vec2 which specify values at
@@ -326,6 +339,20 @@ private:
   Real _max_abs_value_in_training_set;
 
   /**
+   * The training sample index at which we found _max_abs_value_in_training_set.
+   */
+  unsigned int _max_abs_value_in_training_set_index;
+
+  /**
+   * Keep track of a scaling factor for each component of the parametrized functions in
+   * the training set which "scales up" each component to have a similar magnitude as
+   * the largest component encountered in the training set. This can give more uniform
+   * scaling across all components and is helpful in cases where components have widely
+   * varying magnitudes.
+   */
+  std::vector<Real> _component_scaling_in_training_set;
+
+  /**
    * The quadrature point locations, quadrature point weights (JxW), and subdomain IDs
    * on every element local to this processor.
    *
@@ -348,6 +375,16 @@ private:
    * to the mapping function derivatives.
    */
   std::unordered_map<dof_id_type, std::vector<std::vector<Point>> > _local_quad_point_locations_perturbations;
+
+  /**
+   * We also optionally store the values at the "observation points" for all parametrized functions
+   * in the training set. These values are used to obtain the observation values that are stored in
+   * RBEIMEvaluation.
+   *
+   * Indexing is: training_index --> observation point index --> component --> value.
+   */
+  std::vector<std::vector<std::vector<Number>>> _parametrized_functions_for_training_obs_values;
+
 };
 
 } // namespace libMesh

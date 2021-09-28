@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,7 @@
 #include "libmesh/libmesh_common.h"
 #include "libmesh/petsc_solver_exception.h"
 #include "libmesh/parallel_only.h"
+#include "libmesh/enum_to_string.h"
 
 // PETSc include files.
 #ifdef I
@@ -684,7 +685,7 @@ void PetscVector<T>::init (const numeric_index_type n,
       LIBMESH_CHKERR(ierr);
     }
   else
-    libmesh_error_msg("Unsupported type " << this->_type);
+    libmesh_error_msg("Unsupported type " << Utility::enum_to_string(this->_type));
 
   this->_is_initialized = true;
   this->_is_closed = true;

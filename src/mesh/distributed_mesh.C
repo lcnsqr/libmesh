@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -25,7 +25,8 @@
 #include "libmesh/elem.h"
 #include "libmesh/libmesh_logging.h"
 #include "libmesh/mesh_communication.h"
-#include "libmesh/parmetis_partitioner.h"
+#include "libmesh/partitioner.h"
+#include "libmesh/string_to_enum.h"
 
 // TIMPI includes
 #include "timpi/parallel_implementation.h"
@@ -54,11 +55,38 @@ DistributedMesh::DistributedMesh (const Parallel::Communicator & comm_in,
   _next_unique_id = this->processor_id();
 #endif
 
-  // FIXME: give parmetis the communicator!
-  _partitioner = libmesh_make_unique<ParmetisPartitioner>();
+  const std::string default_partitioner = "parmetis";
+  const std::string my_partitioner =
+    libMesh::command_line_value("--default-partitioner",
+                                default_partitioner);
+  _partitioner = Partitioner::build
+    (Utility::string_to_enum<PartitionerType>(my_partitioner));
 }
 
+DistributedMesh & DistributedMesh::operator= (DistributedMesh && other_mesh)
+{
+  // Move assign as an UnstructuredMesh.
+  this->UnstructuredMesh::operator=(std::move(other_mesh));
 
+  // Nodes and elements belong to DistributedMesh and have to be
+  // moved before we can move arbitrary GhostingFunctor, Partitioner,
+  // etc. subclasses.
+  this->move_nodes_and_elements(std::move(other_mesh));
+
+  _extra_ghost_elems = std::move(other_mesh._extra_ghost_elems);
+
+  // Handle remaining MeshBase moves.
+  this->post_dofobject_moves(std::move(other_mesh));
+
+  return *this;
+}
+
+MeshBase & DistributedMesh::assign(MeshBase && other_mesh)
+{
+  *this = std::move(cast_ref<DistributedMesh&>(other_mesh));
+
+  return *this;
+}
 
 DistributedMesh::~DistributedMesh ()
 {
@@ -173,6 +201,31 @@ DistributedMesh::DistributedMesh (const UnstructuredMesh & other_mesh) :
   this->update_parallel_id_counts();
 }
 
+void DistributedMesh::move_nodes_and_elements(MeshBase && other_meshbase)
+{
+  DistributedMesh & other_mesh = cast_ref<DistributedMesh&>(other_meshbase);
+
+  this->_nodes = std::move(other_mesh._nodes);
+  this->_n_nodes = other_mesh.n_nodes();
+
+  this->_elements = std::move(other_mesh._elements);
+  this->_n_elem = other_mesh.n_elem();
+
+  _is_serial = other_mesh.is_serial();
+  _is_serial_on_proc_0 = other_mesh.is_serial_on_zero();
+
+  _max_node_id = other_mesh.max_node_id();
+  _max_elem_id = other_mesh.max_elem_id();
+
+  _next_free_local_node_id = other_mesh._next_free_local_node_id;
+  _next_free_local_elem_id = other_mesh._next_free_local_elem_id;
+  _next_free_unpartitioned_node_id = other_mesh._next_free_unpartitioned_node_id;
+  _next_free_unpartitioned_elem_id = other_mesh._next_free_unpartitioned_elem_id;
+
+  #ifdef LIBMESH_ENABLE_UNIQUE_ID
+  _next_unpartitioned_unique_id = other_mesh._next_unpartitioned_unique_id;
+  #endif
+}
 
 // We use cached values for these so they can be called
 // from one processor without bothering the rest, but
@@ -240,22 +293,25 @@ dof_id_type DistributedMesh::parallel_max_elem_id() const
 
   dof_id_type max_local = 0;
 
-  mapvector<Elem *,dof_id_type>::maptype::const_reverse_iterator
+  dofobject_container<Elem>::const_reverse_veclike_iterator
     rit = _elements.rbegin();
 
-  const mapvector<Elem *,dof_id_type>::maptype::const_reverse_iterator
+  const dofobject_container<Elem>::const_reverse_veclike_iterator
     rend = _elements.rend();
 
   // Look for the maximum element id.  Search backwards through
   // elements so we can break out early.  Beware of nullptr entries that
   // haven't yet been cleared from _elements.
   for (; rit != rend; ++rit)
-    if (rit->second)
-      {
-        libmesh_assert_equal_to(rit->second->id(), rit->first);
-        max_local = rit->first + 1;
-        break;
-      }
+    {
+      const DofObject *d = *rit;
+      if (d)
+        {
+          libmesh_assert(_elements[d->id()] == d);
+          max_local = d->id() + 1;
+          break;
+        }
+    }
 
   this->comm().max(max_local);
   return max_local;
@@ -311,22 +367,25 @@ dof_id_type DistributedMesh::parallel_max_node_id() const
 
   dof_id_type max_local = 0;
 
-  mapvector<Node *,dof_id_type>::maptype::const_reverse_iterator
+  dofobject_container<Node>::const_reverse_veclike_iterator
     rit = _nodes.rbegin();
 
-  const mapvector<Node *,dof_id_type>::maptype::const_reverse_iterator
+  const dofobject_container<Node>::const_reverse_veclike_iterator
     rend = _nodes.rend();
 
-  // Look for the maximum element id.  Search backwards through
-  // elements so we can break out early.  Beware of nullptr entries that
-  // haven't yet been cleared from _elements.
+  // Look for the maximum node id.  Search backwards through
+  // nodes so we can break out early.  Beware of nullptr entries that
+  // haven't yet been cleared from _nodes
   for (; rit != rend; ++rit)
-    if (rit->second)
-      {
-        libmesh_assert_equal_to(rit->second->id(), rit->first);
-        max_local = rit->first + 1;
-        break;
-      }
+    {
+      const DofObject *d = *rit;
+      if (d)
+        {
+          libmesh_assert(_nodes[d->id()] == d);
+          max_local = d->id() + 1;
+          break;
+        }
+    }
 
   this->comm().max(max_local);
   return max_local;
@@ -365,10 +424,10 @@ Node * DistributedMesh::node_ptr (const dof_id_type i)
 
 const Node * DistributedMesh::query_node_ptr (const dof_id_type i) const
 {
-  std::map<dof_id_type, Node *>::const_iterator it = _nodes.find(i);
-  if (it != _nodes.end().it)
+  auto it = _nodes.find(i);
+  if (it != _nodes.end())
     {
-      const Node * n = it->second;
+      const Node * n = *it;
       libmesh_assert (!n || n->id() == i);
       return n;
     }
@@ -381,10 +440,10 @@ const Node * DistributedMesh::query_node_ptr (const dof_id_type i) const
 
 Node * DistributedMesh::query_node_ptr (const dof_id_type i)
 {
-  std::map<dof_id_type, Node *>::const_iterator it = _nodes.find(i);
-  if (it != _nodes.end().it)
+  auto it = _nodes.find(i);
+  if (it != _nodes.end())
     {
-      Node * n = it->second;
+      Node * n = *it;
       libmesh_assert (!n || n->id() == i);
       return n;
     }
@@ -419,10 +478,10 @@ Elem * DistributedMesh::elem_ptr (const dof_id_type i)
 
 const Elem * DistributedMesh::query_elem_ptr (const dof_id_type i) const
 {
-  std::map<dof_id_type, Elem *>::const_iterator it = _elements.find(i);
-  if (it != _elements.end().it)
+  auto it = _elements.find(i);
+  if (it != _elements.end())
     {
-      const Elem * e = it->second;
+      const Elem * e = *it;
       libmesh_assert (!e || e->id() == i);
       return e;
     }
@@ -435,8 +494,8 @@ const Elem * DistributedMesh::query_elem_ptr (const dof_id_type i) const
 
 Elem * DistributedMesh::query_elem_ptr (const dof_id_type i)
 {
-  std::map<dof_id_type, Elem *>::const_iterator it = _elements.find(i);
-  if (it != _elements.end().it)
+  auto it = _elements.find(i);
+  if (it != _elements.end())
     {
       Elem * e = _elements[i];
       libmesh_assert (!e || e->id() == i);
@@ -493,9 +552,9 @@ Elem * DistributedMesh::add_elem (Elem * e)
         (this->n_processors() + 1) + this->processor_id();
 
 #ifndef NDEBUG
-    // We need a const mapvector so we don't inadvertently create
+    // We need a const dofobject_container so we don't inadvertently create
     // nullptr entries when testing for non-nullptr ones
-    const mapvector<Elem *, dof_id_type> & const_elements = _elements;
+    const dofobject_container<Elem> & const_elements = _elements;
 #endif
     libmesh_assert(!const_elements[_next_free_unpartitioned_elem_id]);
     libmesh_assert(!const_elements[_next_free_local_elem_id]);
@@ -676,9 +735,9 @@ Node * DistributedMesh::add_point (const Point & p,
                                    const processor_id_type proc_id)
 {
   auto n_it = _nodes.find(id);
-  if (n_it != _nodes.end().it)
+  if (n_it != _nodes.end())
     {
-      Node * n = n_it->second;
+      Node * n = *n_it;
       libmesh_assert (n);
       libmesh_assert_equal_to (n->id(), id);
 
@@ -753,9 +812,9 @@ Node * DistributedMesh::add_node (Node * n)
         (this->n_processors() + 1) + this->processor_id();
 
 #ifndef NDEBUG
-    // We need a const mapvector so we don't inadvertently create
+    // We need a const dofobject_container so we don't inadvertently create
     // nullptr entries when testing for non-nullptr ones
-    const mapvector<Node *,dof_id_type> & const_nodes = _nodes;
+    const dofobject_container<Node> & const_nodes = _nodes;
 #endif
     libmesh_assert(!const_nodes[_next_free_unpartitioned_node_id]);
     libmesh_assert(!const_nodes[_next_free_local_node_id]);
@@ -979,7 +1038,7 @@ void DistributedMesh::update_post_partitioning ()
 
 
 template <typename T>
-void DistributedMesh::libmesh_assert_valid_parallel_object_ids(const mapvector<T *, dof_id_type> & objects) const
+void DistributedMesh::libmesh_assert_valid_parallel_object_ids(const dofobject_container<T> & objects) const
 {
   // This function must be run on all processors at once
   parallel_object_only();
@@ -1096,12 +1155,12 @@ void DistributedMesh::libmesh_assert_valid_parallel_flags () const
 
 template <typename T>
 dof_id_type
-DistributedMesh::renumber_dof_objects(mapvector<T *, dof_id_type> & objects)
+DistributedMesh::renumber_dof_objects(dofobject_container<T> & objects)
 {
   // This function must be run on all processors at once
   parallel_object_only();
 
-  typedef typename mapvector<T *,dof_id_type>::veclike_iterator object_iterator;
+  typedef typename dofobject_container<T>::veclike_iterator object_iterator;
 
   // In parallel we may not know what objects other processors have.
   // Start by figuring out how many
@@ -1181,6 +1240,8 @@ DistributedMesh::renumber_dof_objects(mapvector<T *, dof_id_type> & objects)
   for (it = objects.begin(); it != end; ++it)
     {
       T * obj = *it;
+      if (!obj)
+        continue;
       if (obj->processor_id() == this->processor_id())
         obj->set_id(next_id++);
       else if (obj->processor_id() != DofObject::invalid_processor_id)
@@ -1299,6 +1360,8 @@ DistributedMesh::renumber_dof_objects(mapvector<T *, dof_id_type> & objects)
   for (it = objects.begin(); it != end; ++it)
     {
       T * obj = *it;
+      if (!obj)
+        continue;
       if (obj->processor_id() == DofObject::invalid_processor_id)
         obj->set_id(next_id++);
     }
@@ -1435,20 +1498,34 @@ void DistributedMesh::renumber_nodes_and_elements ()
 
 void DistributedMesh::fix_broken_node_and_element_numbering ()
 {
-  // We need access to iterators for the underlying containers,
-  // not the mapvector<> reimplementations.
-  mapvector<Node *,dof_id_type>::maptype & nodes = this->_nodes;
-  mapvector<Elem *,dof_id_type>::maptype & elems = this->_elements;
+  // We can't use range-for here because we need access to the special
+  // iterators' methods, not just to their dereferenced values.
 
   // Nodes first
-  for (auto & pr : nodes)
-    if (pr.second != nullptr)
-      pr.second->set_id() = pr.first;
+  for (auto pr = this->_nodes.begin(),
+           end = this->_nodes.end(); pr != end; ++pr)
+    {
+      Node * n = *pr;
+      if (n != nullptr)
+        {
+          const dof_id_type id = pr.index();
+          n->set_id() = id;
+          libmesh_assert_equal_to(this->node_ptr(id), n);
+        }
+    }
 
   // Elements next
-  for (const auto & pr : elems)
-    if (pr.second != nullptr)
-      pr.second->set_id() = pr.first;
+  for (auto pr = this->_elements.begin(),
+           end = this->_elements.end(); pr != end; ++pr)
+    {
+      Elem * e = *pr;
+      if (e != nullptr)
+        {
+          const dof_id_type id = pr.index();
+          e->set_id() = id;
+          libmesh_assert_equal_to(this->elem_ptr(id), e);
+        }
+    }
 }
 
 
@@ -1504,16 +1581,16 @@ void DistributedMesh::delete_remote_elements()
 
   // Now make sure the containers actually shrink - strip
   // any newly-created nullptr voids out of the element array
-  mapvector<Elem *,dof_id_type>::veclike_iterator e_it        = _elements.begin();
-  const mapvector<Elem *,dof_id_type>::veclike_iterator e_end = _elements.end();
+  dofobject_container<Elem>::veclike_iterator e_it        = _elements.begin();
+  const dofobject_container<Elem>::veclike_iterator e_end = _elements.end();
   while (e_it != e_end)
     if (!*e_it)
       e_it = _elements.erase(e_it);
     else
       ++e_it;
 
-  mapvector<Node *,dof_id_type>::veclike_iterator n_it        = _nodes.begin();
-  const mapvector<Node *,dof_id_type>::veclike_iterator n_end = _nodes.end();
+  dofobject_container<Node>::veclike_iterator n_it        = _nodes.begin();
+  const dofobject_container<Node>::veclike_iterator n_end = _nodes.end();
   while (n_it != n_end)
     if (!*n_it)
       n_it = _nodes.erase(n_it);

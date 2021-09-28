@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,7 @@
 
 
 // <h1>Reduced Basis: Example 5 - Reduced Basis Cantilever</h1>
-// 3D cantilever beam using the Reduced Basis Method
+// 1D/2D/3D cantilever beam using the Reduced Basis Method
 // \author David Knezevic
 // \author Kyunghoon "K" Lee
 // \date 2012
@@ -51,6 +51,7 @@
 #include "libmesh/elem.h"
 #include "libmesh/quadrature_gauss.h"
 #include "libmesh/libmesh_logging.h"
+#include "libmesh/nemesis_io.h"
 #include "libmesh/rb_data_serialization.h"
 #include "libmesh/rb_data_deserialization.h"
 #include "libmesh/enum_solver_package.h"
@@ -109,9 +110,8 @@ int main(int argc, char ** argv)
   // portion of this example
   libmesh_example_requires(libMesh::default_solver_package() != TRILINOS_SOLVERS, "--enable-petsc or --enable-laspack");
 
-  // This example only works if libMesh was compiled for 3D
-  const unsigned int dim = 3;
-  libmesh_example_requires(dim == LIBMESH_DIM, "3D support");
+  // This example only works on all meshes if libMesh was compiled for 3D
+  libmesh_example_requires(LIBMESH_DIM == 3, "3D support");
 
 #ifndef LIBMESH_ENABLE_DIRICHLET
   libmesh_example_requires(false, "--enable-dirichlet");
@@ -119,6 +119,9 @@ int main(int argc, char ** argv)
 
   std::string parameters_filename = "reduced_basis_ex5.in";
   GetPot infile(parameters_filename);
+
+  // Override input file arguments from the command line
+  infile.parse_command_line(argc, argv);
 
   unsigned int n_elem_x = infile("n_elem_x", 0);
   unsigned int n_elem_y = infile("n_elem_y", 0);
@@ -136,18 +139,52 @@ int main(int argc, char ** argv)
     online_mode = command_line.next(online_mode);
 
 
-  Mesh mesh (init.comm(), dim);
-  MeshTools::Generation::build_cube (mesh,
-                                     n_elem_x,
-                                     n_elem_y,
-                                     n_elem_z,
-                                     0., x_size,
-                                     0., y_size,
-                                     0., z_size,
-                                     HEX8);
+  Mesh mesh (init.comm());
+
+  // Read a mesh from file?
+  const std::string mesh_filename = infile("mesh_filename", "NO MESH FILE");
+
+  if (mesh_filename == "NO MESH FILE")
+    MeshTools::Generation::build_cube
+      (mesh, n_elem_x, n_elem_y, n_elem_z,
+       0., x_size, 0., y_size, 0., z_size, HEX27);
+  else
+    {
+      mesh.read(mesh_filename);
+
+      // We might be using legacy reduced_basis I/O, which relies on
+      // Hilbert curve renumbering ... and if we have overlapping
+      // nodes, as in the case of IGA meshes where FE nodes and spline
+      // nodes can coincide, then we need unique_id() values to
+      // disambiguate them when sorting.
+#if !defined(LIBMESH_HAVE_CAPNPROTO) && !defined(LIBMESH_ENABLE_UNIQUE_ID)
+  libmesh_example_requires(false, "--enable-unique-id or --enable-capnp");
+#endif
+
+      // We don't yet support the experimental BEXT sideset spec, so
+      // for now we'll add our required sidesets manually for our BEXT
+      // file.
+
+      // Each processor should know about each boundary condition it can
+      // see, so we loop over all elements, not just local elements.
+      for (const auto & elem : mesh.element_ptr_range())
+        for (auto side : elem->side_index_range())
+          if (!elem->neighbor_ptr(side))
+            {
+              Point side_center = elem->build_side_ptr(side)->vertex_average();
+              // Yes, BOUNDARY_ID_MIN_X is a weird ID to use at
+              // min(z), but we got an IGA cantilever mesh with the
+              // lever arm in the z direction
+              if (side_center(2) < 0.1)
+                mesh.get_boundary_info().add_side(elem, side, BOUNDARY_ID_MIN_X);
+              if (side_center(2) > 11.9)
+                mesh.get_boundary_info().add_side(elem, side, BOUNDARY_ID_MAX_X);
+            }
+    }
 
   // Let's add a node boundary condition so that we can impose a point
-  // load.
+  // load and get more test coverage in the build_cube case.
+
   // Each processor should know about each boundary condition it can
   // see, so we loop over all elements, not just local elements.
   for (const auto & elem : mesh.element_ptr_range())
@@ -194,6 +231,8 @@ int main(int argc, char ** argv)
 
   mesh.print_info();
 
+  const unsigned int dim = mesh.mesh_dimension();
+
   // Create an equation systems object.
   EquationSystems equation_systems(mesh);
 
@@ -202,18 +241,31 @@ int main(int argc, char ** argv)
   ElasticityRBConstruction & rb_con =
     equation_systems.add_system<ElasticityRBConstruction>("RBElasticity");
 
+  unsigned int order = infile("order", 1);
+
+  rb_con.var_order = Order(order);
+
   // Also, initialize an ExplicitSystem to store stresses
   ExplicitSystem & stress_system =
     equation_systems.add_system<ExplicitSystem> ("StressSystem");
   stress_system.add_variable("sigma_00", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_01", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_02", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_10", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_11", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_12", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_20", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_21", CONSTANT, MONOMIAL);
-  stress_system.add_variable("sigma_22", CONSTANT, MONOMIAL);
+
+  // Lots of ifs to keep order consistent
+  if (dim > 1)
+    stress_system.add_variable("sigma_01", CONSTANT, MONOMIAL);
+  if (dim > 2)
+      stress_system.add_variable("sigma_02", CONSTANT, MONOMIAL);
+  if (dim > 1)
+      stress_system.add_variable("sigma_10", CONSTANT, MONOMIAL);
+  if (dim > 1)
+      stress_system.add_variable("sigma_11", CONSTANT, MONOMIAL);
+  if (dim > 2)
+    {
+      stress_system.add_variable("sigma_12", CONSTANT, MONOMIAL);
+      stress_system.add_variable("sigma_20", CONSTANT, MONOMIAL);
+      stress_system.add_variable("sigma_21", CONSTANT, MONOMIAL);
+      stress_system.add_variable("sigma_22", CONSTANT, MONOMIAL);
+    }
   stress_system.add_variable("vonMises", CONSTANT, MONOMIAL);
 
   // Initialize the data structures for the equation system.
@@ -307,7 +359,7 @@ int main(int argc, char ** argv)
           rb_con.load_rb_solution();
 
           const RBParameters & rb_eval_params = rb_eval.get_parameters();
-          scale_mesh_and_plot(equation_systems, rb_eval_params, "RB_sol.e");
+          scale_mesh_and_plot(equation_systems, rb_eval_params, "RB_sol");
         }
     }
 
@@ -320,7 +372,7 @@ int main(int argc, char ** argv)
 
 void scale_mesh_and_plot(EquationSystems & es,
                          const RBParameters & mu,
-                         const std::string & filename)
+                         const std::string & file_basename)
 {
   // Loop over the mesh nodes and move them!
   MeshBase & mesh = es.get_mesh();
@@ -332,7 +384,17 @@ void scale_mesh_and_plot(EquationSystems & es,
   compute_stresses(es);
 
 #ifdef LIBMESH_HAVE_EXODUS_API
-  ExodusII_IO (mesh).write_equation_systems (filename, es);
+  // Distributed IGA meshes don't yet support re-gathering to serial
+  bool do_exodus_write =
+    (es.get_mesh().get_constraint_rows().empty() ||
+     es.get_mesh().is_serial());
+  es.comm().min(do_exodus_write);
+  if (do_exodus_write)
+    ExodusII_IO (mesh).write_equation_systems (file_basename+".e", es);
+#ifdef LIBMESH_HAVE_NEMESIS_API
+  else
+    Nemesis_IO (mesh).write_equation_systems (file_basename+".nem", es);
+#endif
 #endif
 
   // Loop over the mesh nodes and move them!
@@ -347,13 +409,16 @@ void compute_stresses(EquationSystems & es)
   const MeshBase & mesh = es.get_mesh();
 
   const unsigned int dim = mesh.mesh_dimension();
+  libmesh_assert_less_equal(dim, 3);
 
   ElasticityRBConstruction & system = es.get_system<ElasticityRBConstruction>("RBElasticity");
 
   unsigned int displacement_vars[3];
   displacement_vars[0] = system.variable_number ("u");
-  displacement_vars[1] = system.variable_number ("v");
-  displacement_vars[2] = system.variable_number ("w");
+  if (dim > 1)
+    displacement_vars[1] = system.variable_number ("v");
+  if (dim > 2)
+    displacement_vars[2] = system.variable_number ("w");
   const unsigned int u_var = system.variable_number ("u");
 
   const DofMap & dof_map = system.get_dof_map();
@@ -370,14 +435,22 @@ void compute_stresses(EquationSystems & es)
   const DofMap & stress_dof_map = stress_system.get_dof_map();
   unsigned int sigma_vars[3][3];
   sigma_vars[0][0] = stress_system.variable_number ("sigma_00");
-  sigma_vars[0][1] = stress_system.variable_number ("sigma_01");
-  sigma_vars[0][2] = stress_system.variable_number ("sigma_02");
-  sigma_vars[1][0] = stress_system.variable_number ("sigma_10");
-  sigma_vars[1][1] = stress_system.variable_number ("sigma_11");
-  sigma_vars[1][2] = stress_system.variable_number ("sigma_12");
-  sigma_vars[2][0] = stress_system.variable_number ("sigma_20");
-  sigma_vars[2][1] = stress_system.variable_number ("sigma_21");
-  sigma_vars[2][2] = stress_system.variable_number ("sigma_22");
+
+  if (dim > 1)
+    {
+      sigma_vars[0][1] = stress_system.variable_number ("sigma_01");
+      sigma_vars[1][0] = stress_system.variable_number ("sigma_10");
+      sigma_vars[1][1] = stress_system.variable_number ("sigma_11");
+    }
+
+  if (dim > 2)
+    {
+      sigma_vars[0][2] = stress_system.variable_number ("sigma_02");
+      sigma_vars[1][2] = stress_system.variable_number ("sigma_12");
+      sigma_vars[2][0] = stress_system.variable_number ("sigma_20");
+      sigma_vars[2][1] = stress_system.variable_number ("sigma_21");
+      sigma_vars[2][2] = stress_system.variable_number ("sigma_22");
+    }
   unsigned int vonMises_var = stress_system.variable_number ("vonMises");
 
   // Storage for the stress dof indices on each element
@@ -389,17 +462,22 @@ void compute_stresses(EquationSystems & es)
 
   for (const auto & elem : mesh.active_local_element_ptr_range())
     {
-      for (unsigned int var=0; var<3; var++)
+      // We'll only be computing stresses on the primary manifold of a
+      // mesh, not, for instance, on spline nodes
+      if (elem->dim() != dim)
+        continue;
+
+      for (unsigned int var=0; var<dim; var++)
         dof_map.dof_indices (elem, dof_indices_var[var], displacement_vars[var]);
 
       fe->reinit (elem);
 
-      elem_sigma.resize(3, 3);
+      elem_sigma.resize(dim, dim);
 
       for (unsigned int qp=0; qp<qrule.n_points(); qp++)
-        for (unsigned int C_i=0; C_i<3; C_i++)
-          for (unsigned int C_j=0; C_j<3; C_j++)
-            for (unsigned int C_k=0; C_k<3; C_k++)
+        for (unsigned int C_i=0; C_i<dim; C_i++)
+          for (unsigned int C_j=0; C_j<dim; C_j++)
+            for (unsigned int C_k=0; C_k<dim; C_k++)
               {
                 const unsigned int n_var_dofs = dof_indices_var[C_k].size();
 
@@ -408,7 +486,7 @@ void compute_stresses(EquationSystems & es)
                 for (unsigned int l=0; l<n_var_dofs; l++)
                   displacement_gradient.add_scaled(dphi[l][qp], system.current_solution(dof_indices_var[C_k][l]));
 
-                for (unsigned int C_l=0; C_l<3; C_l++)
+                for (unsigned int C_l=0; C_l<dim; C_l++)
                   elem_sigma(C_i,C_j) += JxW[qp] * (elasticity_tensor(C_i, C_j, C_k, C_l) * displacement_gradient(C_l));
               }
 
@@ -416,8 +494,8 @@ void compute_stresses(EquationSystems & es)
       elem_sigma.scale(1./elem->volume());
 
       // load elem_sigma data into stress_system
-      for (unsigned int i=0; i<3; i++)
-        for (unsigned int j=0; j<3; j++)
+      for (unsigned int i=0; i<dim; i++)
+        for (unsigned int j=0; j<dim; j++)
           {
             stress_dof_map.dof_indices (elem, stress_dof_indices_var, sigma_vars[i][j]);
 
@@ -434,11 +512,20 @@ void compute_stresses(EquationSystems & es)
           }
 
       // Also, the von Mises stress
-      Number vonMises_value = std::sqrt(0.5*(pow(elem_sigma(0,0) - elem_sigma(1,1),2.) +
-                                             pow(elem_sigma(1,1) - elem_sigma(2,2),2.) +
-                                             pow(elem_sigma(2,2) - elem_sigma(0,0),2.) +
-                                             6.*(pow(elem_sigma(0,1),2.) + pow(elem_sigma(1,2),2.) + pow(elem_sigma(2,0),2.))
-                                             ));
+
+      // We're solving with general plane stress if in 2D, or with
+      // uniaxial stress if in 1D
+      Number sigma00 = elem_sigma(0,0);
+      Number sigma11 = (dim > 1) ? elem_sigma(1,1) : 0;
+      Number sigma22 = (dim > 2) ? elem_sigma(2,2) : 0;
+      Number sum_term = pow(sigma00 - sigma11,2);
+      if (dim > 1)
+        sum_term += pow(sigma11 - sigma22,2) +
+                    6.*pow(elem_sigma(0,1),2);
+      if (dim > 2)
+        sum_term += pow(sigma22 - sigma00,2) +
+                    6.*(pow(elem_sigma(1,2),2) + pow(elem_sigma(2,0),2));
+      Number vonMises_value = std::sqrt(0.5*sum_term);
       stress_dof_map.dof_indices (elem, stress_dof_indices_var, vonMises_var);
       dof_id_type dof_index = stress_dof_indices_var[0];
       if ((stress_system.solution->first_local_index() <= dof_index) &&

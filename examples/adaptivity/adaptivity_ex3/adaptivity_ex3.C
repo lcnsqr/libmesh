@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -344,6 +344,11 @@ int main(int argc, char ** argv)
 
       // Compute the error.
       exact_sol.compute_error("Laplace", "u");
+
+      // The error should at least be sane, but it isn't if the solver
+      // failed badly enough
+      if (libmesh_isnan(exact_sol.l2_error("Laplace", "u")))
+        libmesh_error_msg("NaN solve result");
 
       // Print out the error values
       libMesh::out << "L2-Error is: "

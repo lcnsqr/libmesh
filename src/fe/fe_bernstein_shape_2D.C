@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,15 +16,16 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// Local includes
 #include "libmesh/libmesh_config.h"
+
 #ifdef LIBMESH_ENABLE_HIGHER_ORDER_SHAPES
 
+// libmesh includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/number_lookups.h"
 #include "libmesh/utility.h"
-
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -141,6 +142,7 @@ Real FE<2,BERNSTEIN>::shape(const Elem * elem,
       libmesh_assert_less (totalorder, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       switch (totalorder)
         {
         case FIRST:
@@ -363,13 +365,13 @@ Real FE<2,BERNSTEIN>::shape(const Elem * elem,
               default:
                 libmesh_error_msg("Invalid shape function index shape = " << shape);
               } // switch shape
-          } // case TRI6
+          }
         default:
           libmesh_error_msg("Invalid totalorder = " << totalorder);
         } // switch order
 
     default:
-      libmesh_error_msg("ERROR: Unsupported element type = " << type);
+      libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
     } // switch type
 }
 
@@ -523,6 +525,7 @@ Real FE<2,BERNSTEIN>::shape_deriv(const Elem * elem,
       libmesh_assert_less (totalorder, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       {
         // I have been lazy here and am using finite differences
         // to compute the derivatives!
@@ -557,7 +560,7 @@ Real FE<2,BERNSTEIN>::shape_deriv(const Elem * elem,
       }
 
     default:
-      libmesh_error_msg("ERROR: Unsupported element type = " << type);
+      libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
     }
 }
 
@@ -688,6 +691,7 @@ Real FE<2,BERNSTEIN>::shape_second_deriv(const Elem * elem,
     case QUAD8:
     case QUADSHELL8:
     case TRI6:
+    case TRI7:
       {
         // I have been lazy here and am using finite differences
         // to compute the derivatives!
@@ -731,7 +735,7 @@ Real FE<2,BERNSTEIN>::shape_second_deriv(const Elem * elem,
       }
 
     default:
-      libmesh_error_msg("ERROR: Unsupported element type = " << type);
+      libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
     }
 }
 

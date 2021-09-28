@@ -40,6 +40,7 @@ using libMesh::RealGradient;
 using libMesh::Elem;
 using libMesh::FEBase;
 using libMesh::subdomain_id_type;
+using libMesh::dof_id_type;
 using libMesh::Utility::pow;
 
 struct ShiftedGaussian : public RBParametrizedFunction
@@ -52,8 +53,11 @@ struct ShiftedGaussian : public RBParametrizedFunction
   virtual std::vector<Number>
   evaluate(const RBParameters & mu,
            const Point & p,
+           dof_id_type /*elem_id*/,
+           unsigned int /*qp*/,
            subdomain_id_type /*subdomain_id*/,
-           const std::vector<Point> & /*p_perturb*/) override
+           const std::vector<Point> & /*p_perturb*/,
+           const std::vector<Real> & /*phi_i_qp*/) override
   {
     Real center_x = mu.get_value("center_x");
     Real center_y = mu.get_value("center_y");

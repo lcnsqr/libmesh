@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -74,10 +74,24 @@ public:
   ReplicatedMesh(ReplicatedMesh &&) = delete;
 
   /**
-   * Copy and move assignment are not allowed.
+   * Copy assignment is not allowed.
    */
   ReplicatedMesh & operator= (const ReplicatedMesh &) = delete;
-  ReplicatedMesh & operator= (ReplicatedMesh &&) = delete;
+
+  /**
+   * Move assignment operator.
+  */
+  ReplicatedMesh & operator= (ReplicatedMesh && other_mesh);
+
+  /**
+   * Shim to call the move assignment operator for this class
+  */
+  virtual MeshBase & assign(MeshBase && other_mesh) override;
+
+  /**
+   * Move node and elements from a ReplicatedMesh.
+   */
+  virtual void move_nodes_and_elements(MeshBase && other_mesh) override;
 
   /**
    * Virtual copy-constructor, creates a copy of this mesh
@@ -416,6 +430,15 @@ public:
   virtual SimpleRange<const_element_iterator> active_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) const override
   { return {active_subdomain_set_elements_begin(ss), active_subdomain_set_elements_end(ss)}; }
 
+  virtual element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) override;
+  virtual element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) override;
+  virtual const_element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) const override;
+  virtual const_element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) const override;
+  virtual SimpleRange<element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) override
+  { return {active_local_subdomain_set_elements_begin(ss), active_local_subdomain_set_elements_end(ss)}; }
+  virtual SimpleRange<const_element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) const override
+  { return {active_local_subdomain_set_elements_begin(ss), active_local_subdomain_set_elements_end(ss)}; }
+
   virtual element_iterator ghost_elements_begin () override;
   virtual element_iterator ghost_elements_end () override;
   virtual const_element_iterator ghost_elements_begin () const override;
@@ -436,6 +459,18 @@ public:
   virtual const_element_iterator
   evaluable_elements_end (const DofMap & dof_map,
                           unsigned int var_num = libMesh::invalid_uint) const override;
+
+  virtual element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) override;
+
+  virtual element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) const override;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) const override;
 
 #ifdef LIBMESH_ENABLE_AMR
   virtual element_iterator flagged_elements_begin (unsigned char rflag) override;
@@ -503,6 +538,14 @@ public:
   evaluable_nodes_end (const DofMap & dof_map,
                        unsigned int var_num = libMesh::invalid_uint) const override;
 
+  virtual node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) override;
+  virtual node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) const override;
+  virtual const_node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) const override;
 
 protected:
 

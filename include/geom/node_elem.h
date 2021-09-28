@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -153,6 +153,12 @@ public:
   { libmesh_not_implemented(); return std::unique_ptr<Elem>(); }
 
   /**
+   * The \p Elem::build_edge_ptr() member makes no sense for nodes.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> &, const unsigned int) override
+  { libmesh_not_implemented(); }
+
+  /**
    * \returns 1.
    */
   virtual unsigned int n_sub_elem() const override { return 1; }
@@ -209,6 +215,11 @@ public:
   virtual bool has_affine_map () const override { return true; }
 
   /**
+   * \returns \p true because it doesn't really make sense for a NodeElem.
+   */
+  virtual bool has_invertible_map(Real /*tol*/) const override { return true; }
+
+  /**
    * \returns \p true if the Lagrange shape functions on this element
    * are linear.
    */
@@ -238,6 +249,12 @@ public:
 
 #endif
 
+  /**
+   * No way to reorient a single node.
+   */
+  virtual unsigned int n_permutations() const override final { return 0; }
+
+  virtual void permute(unsigned int) override final { libmesh_error(); }
 
 protected:
 
@@ -257,16 +274,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[1][1][1];
+  static const Real _embedding_matrix[1][1][1];
 
   /**
    * Matrix that allows children to inherit boundary conditions.

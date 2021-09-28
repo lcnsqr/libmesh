@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,14 +16,12 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// C++ includes
-
 // Local includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/fe_interface.h"
 #include "libmesh/number_lookups.h"
-
+#include "libmesh/enum_to_string.h"
 
 namespace
 {
@@ -431,7 +429,7 @@ Real FE<3,HERMITE>::shape(const Elem * elem,
                 FEHermite<1>::hermite_raw_shape(bases1D[2],p(2));
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type " << type);
+            libmesh_error_msg("ERROR: Unsupported element type " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error
@@ -535,7 +533,7 @@ Real FE<3,HERMITE>::shape_deriv(const Elem * elem,
 
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type " << type);
+            libmesh_error_msg("ERROR: Unsupported element type " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error
@@ -662,7 +660,7 @@ Real FE<3,HERMITE>::shape_second_deriv(const Elem * elem,
 
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type " << type);
+            libmesh_error_msg("ERROR: Unsupported element type " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error

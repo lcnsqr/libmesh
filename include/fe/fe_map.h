@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -57,6 +57,11 @@ public:
 
   template<unsigned int Dim>
   void init_reference_to_physical_map(const std::vector<Point> & qp,
+                                      const Elem * elem);
+
+  // Non-templated version for runtime selection
+  void init_reference_to_physical_map(unsigned int dim,
+                                      const std::vector<Point> & qp,
                                       const Elem * elem);
 
   /**
@@ -1037,6 +1042,32 @@ private:
    */
   std::vector<const Node *> _elem_nodes;
 };
+
+
+
+inline void
+FEMap::init_reference_to_physical_map(unsigned int dim,
+                                      const std::vector<Point> & qp,
+                                      const Elem * elem)
+{
+  switch (dim)
+  {
+  case 0:
+    this->init_reference_to_physical_map<0>(qp, elem);
+    break;
+  case 1:
+    this->init_reference_to_physical_map<1>(qp, elem);
+    break;
+  case 2:
+    this->init_reference_to_physical_map<2>(qp, elem);
+    break;
+  case 3:
+    this->init_reference_to_physical_map<3>(qp, elem);
+    break;
+  default:
+    libmesh_error();
+  }
+}
 
 }
 

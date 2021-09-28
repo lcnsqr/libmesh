@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -71,13 +71,37 @@ MeshFunction::MeshFunction (const EquationSystems & eqn_systems,
 {
 }
 
+MeshFunction::MeshFunction (const MeshFunction & mf):
+  FunctionBase<Number> (mf._master),
+  ParallelObject       (mf._eqn_systems),
+  _eqn_systems         (mf._eqn_systems),
+  _vector              (mf._vector),
+  _dof_map             (mf._dof_map),
+  _system_vars         (mf._system_vars),
+  _out_of_mesh_mode    (mf._out_of_mesh_mode)
+{
+  // Initialize the mf and set the point locator if the
+  // input mf had done so.
+  if(mf.initialized())
+  {
+    this->init();
 
+    if(mf.get_point_locator().initialized())
+      this->set_point_locator_tolerance(mf.get_point_locator().get_close_to_point_tol());
+
+  }
+
+  if (mf._subdomain_ids)
+    _subdomain_ids =
+      libmesh_make_unique<std::set<subdomain_id_type>>
+        (*mf._subdomain_ids);
+}
 
 MeshFunction::~MeshFunction () = default;
 
 
 
-void MeshFunction::init (const Trees::BuildType /*point_locator_build_type*/)
+void MeshFunction::init ()
 {
   // are indices of the desired variable(s) provided?
   libmesh_assert_greater (this->_system_vars.size(), 0);
@@ -89,18 +113,27 @@ void MeshFunction::init (const Trees::BuildType /*point_locator_build_type*/)
       return;
     }
 
-  /*
-   * set up the PointLocator: currently we always get this from the
-   * MeshBase we're associated with.
-   */
+  // The Mesh owns the "master" PointLocator, while handing us a
+  // PointLocator "proxy" that forwards all requests to the master.
   const MeshBase & mesh = this->_eqn_systems.get_mesh();
-
-  // Take ownership
   _point_locator = mesh.sub_point_locator();
 
   // ready for use
   this->_initialized = true;
 }
+
+
+
+void MeshFunction::init (const Trees::BuildType /*point_locator_build_type*/)
+{
+  libmesh_deprecated();
+
+  // Call the init() taking no args instead. Note: this is backwards
+  // compatible because the argument was not used for anything
+  // previously anyway.
+  this->init();
+}
+
 
 
 void
@@ -117,15 +150,7 @@ MeshFunction::clear ()
 
 std::unique_ptr<FunctionBase<Number>> MeshFunction::clone () const
 {
-  MeshFunction * mf_clone =
-    new MeshFunction(_eqn_systems, _vector, _dof_map, _system_vars, this);
-
-  if (this->initialized())
-    mf_clone->init();
-  mf_clone->set_point_locator_tolerance(
-    this->get_point_locator().get_close_to_point_tol());
-
-  return std::unique_ptr<FunctionBase<Number>>(mf_clone);
+  return libmesh_make_unique<MeshFunction>(*this);
 }
 
 
@@ -196,7 +221,7 @@ void MeshFunction::operator() (const Point & p,
                                const Real time,
                                DenseVector<Number> & output)
 {
-  this->operator() (p, time, output, nullptr);
+  this->operator() (p, time, output, this->_subdomain_ids.get());
 }
 
 void MeshFunction::operator() (const Point & p,
@@ -289,7 +314,7 @@ void MeshFunction::discontinuous_value (const Point & p,
                                         const Real time,
                                         std::map<const Elem *, DenseVector<Number>> & output)
 {
-  this->discontinuous_value (p, time, output, nullptr);
+  this->discontinuous_value (p, time, output, this->_subdomain_ids.get());
 }
 
 
@@ -372,6 +397,15 @@ void MeshFunction::discontinuous_value (const Point & p,
       // Insert temp_output into output
       output[element] = temp_output;
     }
+}
+
+
+
+void MeshFunction::gradient (const Point & p,
+                             const Real time,
+                             std::vector<Gradient> & output)
+{
+  this->gradient(p, time, output, this->_subdomain_ids.get());
 }
 
 
@@ -486,7 +520,7 @@ void MeshFunction::discontinuous_gradient (const Point & p,
                                            const Real time,
                                            std::map<const Elem *, std::vector<Gradient>> & output)
 {
-  this->discontinuous_gradient (p, time, output, nullptr);
+  this->discontinuous_gradient (p, time, output, this->_subdomain_ids.get());
 }
 
 
@@ -602,6 +636,15 @@ void MeshFunction::discontinuous_gradient (const Point & p,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 void MeshFunction::hessian (const Point & p,
+                            const Real time,
+                            std::vector<Tensor> & output)
+{
+  this->hessian(p, time, output, this->_subdomain_ids.get());
+}
+
+
+
+void MeshFunction::hessian (const Point & p,
                             const Real,
                             std::vector<Tensor> & output,
                             const std::set<subdomain_id_type> * subdomain_ids)
@@ -715,11 +758,11 @@ const Elem * MeshFunction::find_element(const Point & p,
       element->find_point_neighbors(p, point_neighbors);
       element = nullptr;
       for (const auto & elem : point_neighbors)
-          if (elem->processor_id() == this->processor_id())
-            {
-              element = elem;
-              break;
-            }
+        if (elem->processor_id() == this->processor_id())
+          {
+            element = elem;
+            break;
+          }
     }
 
   return element;
@@ -780,6 +823,12 @@ const PointLocatorBase & MeshFunction::get_point_locator () const
   return *_point_locator;
 }
 
+PointLocatorBase & MeshFunction::get_point_locator ()
+{
+  libmesh_assert (this->initialized());
+  return *_point_locator;
+}
+
 void MeshFunction::enable_out_of_mesh_mode(const DenseVector<Number> & value)
 {
   libmesh_assert (this->initialized());
@@ -805,11 +854,20 @@ void MeshFunction::disable_out_of_mesh_mode()
 void MeshFunction::set_point_locator_tolerance(Real tol)
 {
   _point_locator->set_close_to_point_tol(tol);
+  _point_locator->set_contains_point_tol(tol);
 }
 
 void MeshFunction::unset_point_locator_tolerance()
 {
   _point_locator->unset_close_to_point_tol();
+}
+
+void MeshFunction::set_subdomain_ids(const std::set<subdomain_id_type> * subdomain_ids)
+{
+  if (subdomain_ids)
+    _subdomain_ids.reset();
+  else
+    _subdomain_ids = libmesh_make_unique<std::set<subdomain_id_type>>(*subdomain_ids);
 }
 
 } // namespace libMesh

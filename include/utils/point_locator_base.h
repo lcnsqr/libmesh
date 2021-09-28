@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -189,6 +189,14 @@ public:
    * in the point locator.
    */
   virtual Real get_contains_point_tol() const;
+
+  /**
+   * The contains_point_tol may be nonzero (in fact it defaults to
+   * non-zero) but unless the user calls set_contains_point_tol(), it
+   * won't actually be *used*. This const accessor can be used to
+   * determine the current status of this flag.
+   */
+  bool get_use_contains_point_tol() const { return _use_contains_point_tol; }
 
   /**
    * Get a const reference to this PointLocator's mesh.

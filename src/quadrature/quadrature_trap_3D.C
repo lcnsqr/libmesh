@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -54,6 +54,7 @@ void QTrap::init_3D(const ElemType, unsigned int)
       // Tetrahedral quadrature rules
     case TET4:
     case TET10:
+    case TET14:
       {
         _points.resize(4);
         _weights.resize(4);
@@ -85,6 +86,46 @@ void QTrap::init_3D(const ElemType, unsigned int)
       }
 
 
+      //---------------------------------------------
+      // Pyramid quadrature rules
+    case PYRAMID5:
+      {
+        _points.resize(5);
+        _weights.resize(5);
+
+        _points[0](0) = -1.;
+        _points[0](1) = -1.;
+        _points[0](2) = 0.;
+
+        _points[1](0) = 1.;
+        _points[1](1) = -1.;
+        _points[1](2) = 0.;
+
+        _points[2](0) = 1.;
+        _points[2](1) = 1.;
+        _points[2](2) = 0.;
+
+        _points[3](0) = -1.;
+        _points[3](1) = 1.;
+        _points[3](2) = 0.;
+
+        _points[4](0) = 0.;
+        _points[4](1) = 0.;
+        _points[4](2) = 1.;
+
+
+        // These are of dubious value since we can't integrate on the
+        // vertex where the mapping Jacobian is ill-defined, but if we
+        // could, this is what would give exact solutions for
+        // constants and linears on the master element.
+        _weights[0] = 1/Real(4);
+        _weights[1] = _weights[0];
+        _weights[2] = _weights[0];
+        _weights[3] = _weights[0];
+        _weights[4] = 1/Real(3);
+
+       return;
+      }
 
       //---------------------------------------------
       // Prism quadrature rules

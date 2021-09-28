@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -34,6 +34,7 @@ namespace libMesh
 // forward declarations
 class DofConstraints;
 class DofMap;
+class QGauss;
 
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
 

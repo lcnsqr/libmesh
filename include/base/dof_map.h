@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -1012,6 +1012,12 @@ public:
    */
   DofConstraints::const_iterator constraint_rows_end() const
   { return _dof_constraints.end(); }
+
+  /**
+   * Provide a const accessor to the DofConstraints map. This allows the user
+   * to quickly search the data structure rather than just iterating over it.
+   */
+  const DofConstraints & get_dof_constraints() const { return _dof_constraints; }
 
   void stash_dof_constraints()
   {

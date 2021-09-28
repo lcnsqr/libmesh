@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -86,19 +86,19 @@ private:
 
   // For TBB compatibility and thread safety we'll copy these in
   // operator()
-  const FFunctor & master_f;
-  const GFunctor * master_g;  // Needed for C1 type elements only
+  FFunctor & master_f;
+  GFunctor * master_g;  // Needed for C1 type elements only
   bool g_was_copied, map_was_created;
-  const ProjectionAction & master_action;
+  ProjectionAction & master_action;
   const std::vector<unsigned int> & variables;
   std::unordered_map<dof_id_type, std::vector<dof_id_type>> * nodes_to_elem;
   bool done_saving_ids;
 
 public:
   GenericProjector (const System & system_in,
-                    const FFunctor & f_in,
-                    const GFunctor * g_in,
-                    const ProjectionAction & act_in,
+                    FFunctor & f_in,
+                    GFunctor * g_in,
+                    ProjectionAction & act_in,
                     const std::vector<unsigned int> & variables_in,
                     std::unordered_map<dof_id_type, std::vector<dof_id_type>> *
                       nodes_to_elem_in = nullptr) :
@@ -527,26 +527,34 @@ protected:
 public:
   typedef typename TensorTools::MakeReal<Output>::type RealType;
 
-  OldSolutionBase(const libMesh::System & sys_in) :
+  OldSolutionBase(const libMesh::System & sys_in,
+                  const std::vector<unsigned int> * vars) :
     last_elem(nullptr),
     sys(sys_in),
-    old_context(sys_in)
+    old_context(sys_in, vars)
   {
     // We'll be queried for components but we'll typically be looking
     // up data by variables, and those indices don't always match
-    for (auto v : make_range(sys.n_vars()))
+    auto make_lookup = [this](unsigned int v)
       {
         const unsigned int vcomp = sys.variable_scalar_number(v,0);
         if (vcomp >= component_to_var.size())
           component_to_var.resize(vcomp+1, static_cast<unsigned int>(-1));
         component_to_var[vcomp] = v;
-      }
+      };
+
+    if (vars)
+      for (auto v : *vars)
+        make_lookup(v);
+    else
+      for (auto v : make_range(sys.n_vars()))
+        make_lookup(v);
   }
 
   OldSolutionBase(const OldSolutionBase & in) :
     last_elem(nullptr),
     sys(in.sys),
-    old_context(sys),
+    old_context(sys, in.old_context.active_vars()),
     component_to_var(in.component_to_var)
   {
   }
@@ -559,18 +567,25 @@ public:
   {
     c.set_algebraic_type(FEMContext::DOFS_ONLY);
 
-    // Loop over variables, to prerequest
-    for (auto var : make_range(sys.n_vars()))
+    const std::set<unsigned char> & elem_dims =
+      old_context.elem_dimensions();
+
+    // Loop over variables and dimensions, to prerequest
+    for (const auto & dim : elem_dims)
       {
         FEAbstract * fe = nullptr;
-        const std::set<unsigned char> & elem_dims =
-          old_context.elem_dimensions();
-
-        for (const auto & dim : elem_dims)
-          {
-            old_context.get_element_fe(var, fe, dim);
-            get_shape_outputs(*fe);
-          }
+        if (old_context.active_vars())
+          for (auto var : *old_context.active_vars())
+            {
+              old_context.get_element_fe(var, fe, dim);
+              get_shape_outputs(*fe);
+            }
+        else
+          for (auto var : make_range(sys.n_vars()))
+            {
+              old_context.get_element_fe(var, fe, dim);
+              get_shape_outputs(*fe);
+            }
       }
   }
 
@@ -709,8 +724,9 @@ public:
   typedef DofValueType ValuePushType;
 
   OldSolutionValue(const libMesh::System & sys_in,
-                   const NumericVector<Number> & old_sol) :
-      OldSolutionBase<Output, point_output>(sys_in),
+                   const NumericVector<Number> & old_sol,
+                   const std::vector<unsigned int> * vars) :
+      OldSolutionBase<Output, point_output>(sys_in, vars),
       old_solution(old_sol)
   {
     this->old_context.set_algebraic_type(FEMContext::OLD);
@@ -718,7 +734,7 @@ public:
   }
 
   OldSolutionValue(const OldSolutionValue & in) :
-      OldSolutionBase<Output, point_output>(in.sys),
+      OldSolutionBase<Output, point_output>(in.sys, in.old_context.active_vars()),
       old_solution(in.old_solution)
   {
     this->old_context.set_algebraic_type(FEMContext::OLD);
@@ -1254,7 +1270,8 @@ template <typename FFunctor, typename GFunctor,
 GenericProjector<FFunctor, GFunctor, FValue, ProjectionAction>::SubFunctor::SubFunctor
   (GenericProjector & p) :
   projector(p), action(p.master_action), f(p.master_f),
-  context(p.system), conts(p.system.n_vars()), field_types(p.system.n_vars()), system(p.system)
+  context(p.system, &p.variables), conts(p.system.n_vars()),
+  field_types(p.system.n_vars()), system(p.system)
 {
   // Loop over all the variables we've been requested to project, to
   // pre-request
@@ -2016,15 +2033,24 @@ void GenericProjector<FFunctor, GFunctor, FValue, ProjectionAction>::ProjectVert
             {
               libmesh_assert_equal_to(vertex.n_comp(sys_num, var), 0);
             }
-          else if (cont == C_ZERO)
+          else if (cont == C_ZERO ||
+                   cont == SIDE_DISCONTINUOUS)
             {
-              libmesh_assert(vertex.n_comp(sys_num, var));
+              if (cont == SIDE_DISCONTINUOUS &&
+                  elem.dim() != 1)
+                {
+                  libmesh_assert_equal_to(vertex.n_comp(sys_num, var), 0);
+                  continue;
+                }
+
               const FValue val = f.eval_at_node
                 (context, var_component, /*dim=*/ 0, // Don't care w/C0
                  vertex, extra_hanging_dofs[var], system.time);
 
               if (field_type == TYPE_VECTOR)
               {
+                libmesh_assert_equal_to(vertex.n_comp(sys_num, var), elem.dim());
+
                 // We will have a number of nodal value DoFs equal to the elem dim
                 for (unsigned int i = 0; i < elem.dim(); ++i)
                 {
@@ -2040,7 +2066,12 @@ void GenericProjector<FFunctor, GFunctor, FValue, ProjectionAction>::ProjectVert
               }
               else
               {
-                // C_ZERO elements have a single nodal value DoF at vertices
+                // C_ZERO elements have a single nodal value DoF at
+                // vertices.  We can't assert n_comp==1 here,
+                // because if this is a hanging node then it may have
+                // more face/edge DoFs, but we don't need to deal with
+                // those here.
+
                 const dof_id_type id = vertex.dof_number(sys_num, var, 0);
                 insert_id(id, val, vertex.processor_id());
               }

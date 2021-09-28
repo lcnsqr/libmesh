@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -69,6 +69,8 @@ ContinuationSystem::ContinuationSystem (EquationSystems & es,
     linear_solver->init((this->name()+"_").c_str());
   else
     linear_solver->init();
+
+  linear_solver->init_names(*this);
 }
 
 

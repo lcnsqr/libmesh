@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -120,6 +120,7 @@ unsigned int l2_hierarchic_n_dofs(const ElemType t, const Order o)
       libmesh_assert_less (o, 2);
       libmesh_fallthrough();
     case TRI6:
+    case TRI7:
       return ((o+1)*(o+2)/2);
     case INVALID_ELEM:
       return 0;

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -69,6 +69,8 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
   libmesh_assert_equal_to (this->_src_vals.size(), n_src_pts*this->n_field_variables());
 
   {
+    LOG_SCOPE ("prepare_for_use():bbox", "RadialBasisInterpolation<>");
+
     Point
       &p_min(_src_bbox.min()),
       &p_max(_src_bbox.max());
@@ -85,9 +87,10 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
       }
   }
 
-  libMesh::out << "bounding box is \n"
-               << _src_bbox.min() << '\n'
-               << _src_bbox.max() << std::endl;
+  // Debugging code
+  // libMesh::out << "bounding box is \n"
+  //              << _src_bbox.min() << '\n'
+  //              << _src_bbox.max() << std::endl;
 
 
   // Construct the Radial Basis Function, giving it the size of the domain
@@ -98,11 +101,11 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
 
   RBF rbf(_r_bbox);
 
-  libMesh::out << "bounding box is \n"
-               << _src_bbox.min() << '\n'
-               << _src_bbox.max() << '\n'
-               << "r_bbox = " << _r_bbox << '\n'
-               << "rbf(r_bbox/2) = " << rbf(_r_bbox/2) << std::endl;
+  // libMesh::out << "bounding box is \n"
+  //              << _src_bbox.min() << '\n'
+  //              << _src_bbox.max() << '\n'
+  //              << "r_bbox = " << _r_bbox << '\n'
+  //              << "rbf(r_bbox/2) = " << rbf(_r_bbox/2) << std::endl;
 
 
   // Construct the projection Matrix
@@ -110,6 +113,9 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
   //typedef Eigen::Matrix<Number, Eigen::Dynamic,              1, Eigen::ColMajor> DynamicVector;
 
   DynamicMatrix A(n_src_pts, n_src_pts), x(n_src_pts,n_vars), b(n_src_pts,n_vars);
+
+  {
+  LOG_SCOPE ("prepare_for_use():mat", "RadialBasisInterpolation<>");
 
   for (std::size_t i=0; i<n_src_pts; i++)
     {
@@ -131,11 +137,16 @@ void RadialBasisInterpolation<KDDim,RBF>::prepare_for_use()
       for (unsigned int var=0; var<n_vars; var++)
         b(i,var) = _src_vals[i*n_vars + var];
     }
+  }
 
 
-  // Solve the linear system
-  x = A.ldlt().solve(b);
-  //x = A.fullPivLu().solve(b);
+  {
+    LOG_SCOPE ("prepare_for_use():solve", "RadialBasisInterpolation<>");
+
+    // Solve the linear system
+    x = A.ldlt().solve(b);
+    //x = A.fullPivLu().solve(b);
+  }
 
   // save  the weights for each variable
   _weights.resize (this->_src_vals.size());

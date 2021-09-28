@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -251,6 +251,7 @@ void EulerSolver::integrate_qoi_timestep()
   }
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void EulerSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & adjoint_refinement_error_estimator, ErrorVector & QoI_elementwise_error)
 {
   // Currently, we only support this functionality when Backward-Euler time integration is used.
@@ -413,5 +414,6 @@ void EulerSolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementE
   }
 
 }
+#endif // LIBMESH_ENABLE_AMR
 
 } // namespace libMesh

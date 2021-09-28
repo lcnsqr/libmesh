@@ -46,8 +46,6 @@ public:
       {
         const BoundingBox bbox = elem->loose_bounding_box();
 
-        const Point centroid = elem->centroid();
-
         // The "loose" bounding box should actually be pretty tight
         // in most of these cases, but for weirdly aligned triangles
         // (such as occur in pyramid elements) it won't be, so we'll
@@ -109,12 +107,46 @@ public:
 #endif
           CPPUNIT_ASSERT(elem->contains_point(elem->point(n)));
   }
+
+  void test_permute()
+  {
+    for (const auto & elem : _mesh->active_local_element_ptr_range())
+      for (const auto p : IntRange<unsigned int>(0, elem->n_permutations()))
+        {
+          elem->permute(p);
+          CPPUNIT_ASSERT(elem->has_invertible_map());
+        }
+  }
+
+  void test_center_node_on_side()
+  {
+    for (const auto & elem : _mesh->active_local_element_ptr_range())
+      for (const auto s : elem->side_index_range())
+        {
+          if (elem->type() == EDGE2 || elem->type() == EDGE3 || elem->type() == EDGE4)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)s, elem->center_node_on_side(s));
+          else if (elem->type() == TRI6 || elem->type() == TRI7)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)(s + 3), elem->center_node_on_side(s));
+          else if (elem->type() == QUAD8 || elem->type() == QUAD9 || elem->type() == QUADSHELL8)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)(s + 4), elem->center_node_on_side(s));
+          else if (elem->type() == HEX27)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)(s + 20), elem->center_node_on_side(s));
+          else if (elem->type() == PRISM18 && s >= 1 && s <= 3)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)(s + 14), elem->center_node_on_side(s));
+          else if (elem->type() == PYRAMID14 && s == 4)
+            CPPUNIT_ASSERT_EQUAL((unsigned int)(13), elem->center_node_on_side(s));
+          else
+            CPPUNIT_ASSERT_EQUAL(invalid_uint, elem->center_node_on_side(s));
+        }
+  }
 };
 
 #define ELEMTEST                                \
   CPPUNIT_TEST( test_bounding_box );            \
   CPPUNIT_TEST( test_maps );                    \
-  CPPUNIT_TEST( test_contains_point_node );
+  CPPUNIT_TEST( test_permute );                 \
+  CPPUNIT_TEST( test_contains_point_node );     \
+  CPPUNIT_TEST( test_center_node_on_side );
 
 #define INSTANTIATE_ELEMTEST(elemtype)                          \
   class ElemTest_##elemtype : public ElemTest<elemtype> {       \
@@ -133,6 +165,7 @@ INSTANTIATE_ELEMTEST(EDGE4);
 #if LIBMESH_DIM > 1
 INSTANTIATE_ELEMTEST(TRI3);
 INSTANTIATE_ELEMTEST(TRI6);
+INSTANTIATE_ELEMTEST(TRI7);
 
 INSTANTIATE_ELEMTEST(QUAD4);
 INSTANTIATE_ELEMTEST(QUAD8);
@@ -142,6 +175,7 @@ INSTANTIATE_ELEMTEST(QUAD9);
 #if LIBMESH_DIM > 2
 INSTANTIATE_ELEMTEST(TET4);
 INSTANTIATE_ELEMTEST(TET10);
+INSTANTIATE_ELEMTEST(TET14);
 
 INSTANTIATE_ELEMTEST(HEX8);
 INSTANTIATE_ELEMTEST(HEX20);

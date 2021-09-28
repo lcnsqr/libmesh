@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -117,9 +117,15 @@ int main (int argc, char ** argv)
   // Create an equation systems object.
   EquationSystems equation_systems (mesh);
 
+  // Get command line arguments for mesh size
+  GetPot input(argc, argv);
+
+  const unsigned int nx = input("nx", 16);
+  const unsigned int ny = input("ny", 16);
+
   MeshTools::Generation::build_square (mesh,
-                                       16,
-                                       16,
+                                       nx,
+                                       ny,
                                        -1., 1.,
                                        -1., 1.,
                                        QUAD4);

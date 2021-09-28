@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,15 @@
 #include "libmesh/remote_elem.h"
 #include "libmesh/threads.h"
 #include "libmesh/enum_to_string.h"
+
+
+#ifdef LIBMESH_ENABLE_AMR
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+// to have the macro 'inf_fe_switch' available.
+#include "libmesh/fe_interface_macros.h"
+#include "libmesh/inf_fe.h"
+#endif
+#endif
 
 namespace libMesh
 {
@@ -78,10 +87,14 @@ void lagrange_nodal_soln(const Elem * elem,
             }
 
 
+          case TRI7:
+            libmesh_assert_equal_to (nodal_soln.size(), 7);
+            nodal_soln[6] = (elem_soln[0] + elem_soln[1] + elem_soln[2])/3.;
+            libmesh_fallthrough();
           case TRI6:
             {
+              libmesh_assert (type == TRI7 || nodal_soln.size() == 6);
               libmesh_assert_equal_to (elem_soln.size(), 3);
-              libmesh_assert_equal_to (nodal_soln.size(), 6);
 
               nodal_soln[0] = elem_soln[0];
               nodal_soln[1] = elem_soln[1];
@@ -121,10 +134,17 @@ void lagrange_nodal_soln(const Elem * elem,
             }
 
 
+          case TET14:
+            libmesh_assert_equal_to (nodal_soln.size(), 14);
+            nodal_soln[10] = (elem_soln[0] + elem_soln[1] + elem_soln[2])/3.;
+            nodal_soln[11] = (elem_soln[0] + elem_soln[1] + elem_soln[3])/3.;
+            nodal_soln[12] = (elem_soln[1] + elem_soln[2] + elem_soln[3])/3.;
+            nodal_soln[13] = (elem_soln[0] + elem_soln[2] + elem_soln[3])/3.;
+            libmesh_fallthrough();
           case TET10:
             {
               libmesh_assert_equal_to (elem_soln.size(), 4);
-              libmesh_assert_equal_to (nodal_soln.size(), 10);
+              libmesh_assert (type == TET14 || nodal_soln.size() == 10);
 
               nodal_soln[0] = elem_soln[0];
               nodal_soln[1] = elem_soln[1];
@@ -300,6 +320,40 @@ void lagrange_nodal_soln(const Elem * elem,
               return;
             }
 
+          case TRI7:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 6);
+              libmesh_assert_equal_to (nodal_soln.size(), 7);
+
+              for (int i=0; i != 6; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              nodal_soln[6] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[2])
+                              +4./9. * (elem_soln[3] + elem_soln[4] + elem_soln[5]);
+
+              return;
+            }
+
+          case TET14:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 10);
+              libmesh_assert_equal_to (nodal_soln.size(), 14);
+
+              for (int i=0; i != 10; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              nodal_soln[10] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[2])
+                               +4./9. * (elem_soln[4] + elem_soln[5] + elem_soln[6]);
+              nodal_soln[11] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[3])
+                               +4./9. * (elem_soln[4] + elem_soln[7] + elem_soln[8]);
+              nodal_soln[12] = -1./9. * (elem_soln[1] + elem_soln[2] + elem_soln[3])
+                               +4./9. * (elem_soln[5] + elem_soln[8] + elem_soln[9]);
+              nodal_soln[13] = -1./9. * (elem_soln[0] + elem_soln[2] + elem_soln[3])
+                               +4./9. * (elem_soln[6] + elem_soln[7] + elem_soln[9]);
+
+              return;
+            }
+
           default:
             {
               // By default the element solution _is_ nodal,
@@ -349,6 +403,7 @@ unsigned int lagrange_n_dofs(const ElemType t, const Order o)
           case TRISHELL3:
           case TRI3SUBDIVISION:
           case TRI6:
+          case TRI7:
             return 3;
 
           case QUAD4:
@@ -360,6 +415,7 @@ unsigned int lagrange_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
             return 4;
 
           case HEX8:
@@ -398,6 +454,7 @@ unsigned int lagrange_n_dofs(const ElemType t, const Order o)
             return 3;
 
           case TRI6:
+          case TRI7:
             return 6;
 
           case QUAD8:
@@ -408,6 +465,7 @@ unsigned int lagrange_n_dofs(const ElemType t, const Order o)
             return 9;
 
           case TET10:
+          case TET14:
             return 10;
 
           case HEX20:
@@ -445,6 +503,12 @@ unsigned int lagrange_n_dofs(const ElemType t, const Order o)
 
           case EDGE4:
             return 4;
+
+          case TRI7:
+            return 7;
+
+          case TET14:
+            return 14;
 
           case INVALID_ELEM:
             return 0;
@@ -496,6 +560,7 @@ unsigned int lagrange_n_dofs_at_node(const ElemType t,
           case TRISHELL3:
           case TRI3SUBDIVISION:
           case TRI6:
+          case TRI7:
             {
               switch (n)
                 {
@@ -531,6 +596,7 @@ unsigned int lagrange_n_dofs_at_node(const ElemType t,
 
           case TET4:
           case TET10:
+          case TET14:
             {
               switch (n)
                 {
@@ -632,6 +698,12 @@ unsigned int lagrange_n_dofs_at_node(const ElemType t,
           case PYRAMID14:
             return 1;
 
+          case TRI7:
+            return (n < 6);
+
+          case TET14:
+            return (n < 10);
+
           case INVALID_ELEM:
             return 0;
 
@@ -646,6 +718,8 @@ unsigned int lagrange_n_dofs_at_node(const ElemType t,
           {
           case NODEELEM:
           case EDGE4:
+          case TRI7:
+          case TET14:
             return 1;
 
           case INVALID_ELEM:
@@ -660,7 +734,6 @@ unsigned int lagrange_n_dofs_at_node(const ElemType t,
       libmesh_error_msg("Unsupported order: " << o );
     }
 }
-
 
 
 #ifdef LIBMESH_ENABLE_AMR
@@ -679,6 +752,31 @@ void lagrange_compute_constraints (DofConstraints & constraints,
   // Only constrain active and ancestor elements
   if (elem->subactive())
     return;
+
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+   if (elem->infinite())
+   {
+      const FEType fe_t = dof_map.variable_type(variable_number);
+
+      // expand the infinite_compute_constraint in its template-arguments.
+      switch(Dim)
+      {
+         case 2:
+            {
+            inf_fe_family_mapping_switch(2, inf_compute_constraints (constraints, dof_map, variable_number, elem) , ,; break;);
+            break;
+          }
+         case 3:
+            {
+            inf_fe_family_mapping_switch(3, inf_compute_constraints (constraints, dof_map, variable_number, elem) , ,; break;);
+            break;
+            }
+         default:
+           libmesh_error_msg("Invalid dim = " << Dim);
+      }
+      return;
+   }
+#endif
 
   FEType fe_type = dof_map.variable_type(variable_number);
 

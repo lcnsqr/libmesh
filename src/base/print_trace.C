@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -204,8 +204,9 @@ void print_trace(std::ostream & out_stream)
 
   // Let the user disable GDB backtraces by configuring with
   // --without-gdb-command or with a command line option.
-  if (std::string(LIBMESH_GDB_COMMAND) != std::string("no") &&
-      !libMesh::on_command_line("--no-gdb-backtrace"))
+  if ((std::string(LIBMESH_GDB_COMMAND) != std::string("no") &&
+       !libMesh::on_command_line("--no-gdb-backtrace")) ||
+      libMesh::on_command_line("--gdb"))
     gdb_worked = gdb_backtrace(out_stream);
 
   // This part requires that your compiler at least supports

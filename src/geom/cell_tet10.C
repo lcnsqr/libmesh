@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -158,23 +158,29 @@ bool Tet10::is_child_on_side(const unsigned int /*c*/,
 bool Tet10::has_affine_map() const
 {
   // Make sure edges are straight
-  if (!this->point(4).relative_fuzzy_equals
-      ((this->point(0) + this->point(1))/2))
+  Point v = this->point(1) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(4) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(5).relative_fuzzy_equals
-      ((this->point(1) + this->point(2))/2))
+  v = this->point(2) - this->point(1);
+  if (!v.relative_fuzzy_equals
+      ((this->point(5) - this->point(1))*2, affine_tol))
     return false;
-  if (!this->point(6).relative_fuzzy_equals
-      ((this->point(2) + this->point(0))/2))
+  v = this->point(2) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(6) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(7).relative_fuzzy_equals
-      ((this->point(3) + this->point(0))/2))
+  v = this->point(3) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(7) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(8).relative_fuzzy_equals
-      ((this->point(3) + this->point(1))/2))
+  v = this->point(3) - this->point(1);
+  if (!v.relative_fuzzy_equals
+      ((this->point(8) - this->point(1))*2, affine_tol))
     return false;
-  if (!this->point(9).relative_fuzzy_equals
-      ((this->point(3) + this->point(2))/2))
+  v = this->point(3) - this->point(2);
+  if (!v.relative_fuzzy_equals
+      ((this->point(9) - this->point(2))*2, affine_tol))
     return false;
   return true;
 }
@@ -228,9 +234,14 @@ void Tet10::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Tet10::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge3,Tet10>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge3,Tet10>>(this,i);
+
+
+void Tet10::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Tet10>(edge, i, EDGE3);
 }
 
 
@@ -538,7 +549,7 @@ const unsigned short int Tet10::_second_order_adjacent_vertices[6][2] =
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet10::num_nodes] =
+const Real Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet10::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -663,9 +674,9 @@ const float Tet10::_embedding_matrix[Tet10::num_children][Tet10::num_nodes][Tet1
 
 
 
-float Tet10::embedding_matrix (const unsigned int i,
-                               const unsigned int j,
-                               const unsigned int k) const
+Real Tet10::embedding_matrix (const unsigned int i,
+                              const unsigned int j,
+                              const unsigned int k) const
 {
   // Choose an optimal diagonal, if one has not already been selected
   this->choose_diagonal();
@@ -830,6 +841,44 @@ Real Tet10::volume () const
     }
 
   return vol;
+}
+
+
+void Tet10::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 12);
+
+  const unsigned int side = perm_num % 4;
+  const unsigned int rotate = perm_num / 4;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap3nodes(0,1,2);
+      swap3nodes(4,5,6);
+      swap3nodes(7,8,9);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap3nodes(0,2,3);
+    swap3nodes(4,5,8);
+    swap3nodes(6,9,7);
+    break;
+  case 2:
+    swap3nodes(2,0,3);
+    swap3nodes(5,4,8);
+    swap3nodes(6,7,9);
+    break;
+  case 3:
+    swap3nodes(2,1,3);
+    swap3nodes(5,8,9);
+    swap3nodes(6,4,7);
+    break;
+  default:
+    libmesh_error();
+  }
 }
 
 

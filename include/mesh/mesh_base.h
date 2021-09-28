@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -110,7 +110,13 @@ public:
    * If you need to copy a Mesh, use the clone() method.
    */
   MeshBase & operator= (const MeshBase &) = delete;
-  MeshBase & operator= (MeshBase &&) = delete;
+  MeshBase & operator= (MeshBase && other_mesh);
+
+  /**
+   * Shim to allow operator = (&&) to behave like a virtual function
+   * without having to be one.
+   */
+  virtual MeshBase & assign(MeshBase && other_mesh) = 0;
 
   /**
    * Virtual "copy constructor"
@@ -234,11 +240,11 @@ public:
 
   /**
    * Most of the time you should not need to call this, as the element
-   * dimensions will be set automatically by a call to cache_elem_dims(),
+   * dimensions will be set automatically by a call to cache_elem_data(),
    * therefore only call this if you know what you're doing.
    *
    * In some specialized situations, for example when adding a single
-   * Elem on all procs, it can be faster to skip calling cache_elem_dims()
+   * Elem on all procs, it can be faster to skip calling cache_elem_data()
    * and simply specify the element dimensions manually, which is why this
    * setter exists.
    */
@@ -996,7 +1002,7 @@ public:
    *  1.) call \p find_neighbors()
    *  2.) call \p partition()
    *  3.) call \p renumber_nodes_and_elements()
-   *  4.) call \p cache_elem_dims()
+   *  4.) call \p cache_elem_data()
    *
    * The argument to skip renumbering is now deprecated - to prevent a
    * mesh from being renumbered, set allow_renumbering(false). The argument to skip
@@ -1159,13 +1165,18 @@ public:
   GhostingFunctor & default_ghosting() { return *_default_ghosting; }
 
   /**
-   * Constructs a list of all subdomain identifiers in the global mesh.
+   * Constructs a list of all subdomain identifiers in the local mesh if
+   * \p global == false, and in the global mesh if \p global == true (default).
    * Subdomains correspond to separate subsets of the mesh which could correspond
    * e.g. to different materials in a solid mechanics application,
    * or regions where different physical processes are important.  The subdomain
    * mapping is independent from the parallel decomposition.
+   *
+   * Unpartitioned elements are included in the set in the case that \p
+   * global == true. If \p global == false, the unpartitioned elements are not
+   * included because unpartitioned elements do not have a sense of locality.
    */
-  void subdomain_ids (std::set<subdomain_id_type> & ids) const;
+  void subdomain_ids (std::set<subdomain_id_type> & ids, const bool global = true) const;
 
   /**
    * \returns The number of subdomains in the global mesh. Subdomains correspond
@@ -1175,6 +1186,15 @@ public:
    * from the parallel decomposition.
    */
   subdomain_id_type n_subdomains () const;
+
+  /**
+   * \returns The number of subdomains in the local mesh. Subdomains correspond
+   * to separate subsets of the mesh which could correspond e.g. to different
+   * materials in a solid mechanics application, or regions where different
+   * physical processes are important.  The subdomain mapping is independent
+   * from the parallel decomposition.
+   */
+  subdomain_id_type n_local_subdomains () const;
 
   /**
    * \returns The number of partitions which have been defined via
@@ -1190,13 +1210,28 @@ public:
   /**
    * \returns A string containing relevant information
    * about the mesh.
+   *
+   * \p verbosity sets the verbosity, with 0 being the least and 2 being the greatest.
+   * 0 - Dimensions, number of nodes, number of elems, number of subdomains, number of
+   *     partitions, prepared status.
+   * 1 - Adds the mesh bounding box, mesh element types, specific nodesets/edgesets/sidesets
+   *     with element types, number of nodes/edges/sides.
+   * 2 - Adds volume information and bounding boxes to boundary information.
+   *
+   * The \p global parameter pertains primarily to verbosity levels 1 and above.
+   * When \p global == true, information is only output on rank 0 and the information
+   * is reduced. When \p global == false, information is output on all ranks that pertains
+   * only to that local partition.
    */
-  std::string get_info () const;
+  std::string get_info (const unsigned int verbosity = 0, const bool global = true) const;
 
   /**
    * Prints relevant information about the mesh.
+   *
+   * Take note of the docstring for get_info() for more information pretaining to
+   * the \p verbosity and \p global parameters.
    */
-  void print_info (std::ostream & os=libMesh::out) const;
+  void print_info (std::ostream & os=libMesh::out, const unsigned int verbosity = 0, const bool global = true) const;
 
   /**
    * Equivalent to calling print_info() above, but now you can write:
@@ -1235,6 +1270,15 @@ public:
    * built.  The same holds obviously for \p Quad4, \p Prism6, etc.
    */
   virtual void all_second_order (const bool full_ordered=true) = 0;
+
+  /**
+   * Converts a (conforming, non-refined) mesh with linear elements
+   * into a mesh with "complete" order elements, i.e. elements which
+   * can store degrees of freedom on any vertex, edge, or face.  For
+   * example, a mesh consisting of \p Tet4 or \p Tet10 will be
+   * converted to a mesh with \p Tet14 etc.
+   */
+  virtual void all_complete_order () = 0;
 
   /**
    * We need an empty, generic class to act as a predicate for this
@@ -1449,6 +1493,22 @@ public:
   evaluable_elements_end (const DofMap & dof_map,
                           unsigned int var_num = libMesh::invalid_uint) const = 0;
 
+  /**
+   * Iterate over elements in the Mesh where the solutions (as
+   * distributed by the given DofMaps) can be evaluated for all variables
+   */
+  virtual element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) = 0;
+
+  virtual element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) = 0;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_begin (std::vector<const DofMap *> dof_maps) const = 0;
+
+  virtual const_element_iterator
+  multi_evaluable_elements_end (std::vector<const DofMap *> dof_maps) const = 0;
+
 #ifdef LIBMESH_ENABLE_AMR
   /**
    * Iterate over all elements with a specified refinement flag.
@@ -1524,6 +1584,13 @@ public:
   virtual const_element_iterator active_local_subdomain_elements_end (subdomain_id_type subdomain_id) const = 0;
   virtual SimpleRange<element_iterator> active_local_subdomain_elements_ptr_range(subdomain_id_type subdomain_id) = 0;
   virtual SimpleRange<const_element_iterator> active_local_subdomain_elements_ptr_range(subdomain_id_type subdomain_id) const = 0;
+
+  virtual element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) = 0;
+  virtual element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) = 0;
+  virtual const_element_iterator active_local_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) const = 0;
+  virtual const_element_iterator active_local_subdomain_set_elements_end (std::set<subdomain_id_type> ss) const = 0;
+  virtual SimpleRange<element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) = 0;
+  virtual SimpleRange<const_element_iterator> active_local_subdomain_set_elements_ptr_range(std::set<subdomain_id_type> ss) const = 0;
 
   virtual element_iterator local_level_elements_begin (unsigned int level) = 0;
   virtual element_iterator local_level_elements_end (unsigned int level) = 0;
@@ -1650,6 +1717,22 @@ public:
                        unsigned int var_num = libMesh::invalid_uint) const = 0;
 
   /**
+   * Iterate over nodes in the Mesh where the solutions (as
+   * distributed by the given DofMaps) can be evaluated for all variables
+   */
+  virtual node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) = 0;
+
+  virtual node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) = 0;
+
+  virtual const_node_iterator
+  multi_evaluable_nodes_begin (std::vector<const DofMap *> dof_maps) const = 0;
+
+  virtual const_node_iterator
+  multi_evaluable_nodes_end (std::vector<const DofMap *> dof_maps) const = 0;
+
+  /**
    * \returns A writable reference to the whole subdomain name map
    */
   std::map<subdomain_id_type, std::string> & set_subdomain_name_map ()
@@ -1661,23 +1744,43 @@ public:
     constraint_rows_type;
 
   constraint_rows_type & get_constraint_rows()
-  { libmesh_experimental(); return _constraint_rows; }
+  { return _constraint_rows; }
 
   const constraint_rows_type & get_constraint_rows() const
-  { libmesh_experimental(); return _constraint_rows; }
+  { return _constraint_rows; }
 
   /**
+   * \deprecated This method has ben replaced by \p cache_elem_data which
+   * caches data in addition to elem dimensions (e.g. elem subdomain ids)
    * Search the mesh and cache the different dimensions of the elements
    * present in the mesh.  This is done in prepare_for_use(), but can
    * be done manually by other classes after major mesh modifications.
    */
   void cache_elem_dims();
 
+  /*
+   * Search the mesh and cache data for the elements
+   * present in the mesh.  This is done in prepare_for_use(), but can
+   * be done manually by other classes after major mesh modifications.
+   * Data cached includes:
+   *   - elem dimensions
+   *   - elem subdomains
+   */
+  void cache_elem_data();
+
   /**
    * Search the mesh for elements that have a neighboring element
    * of dim+1 and set that element as the interior parent
    */
   void detect_interior_parents();
+
+  /**
+   * \return The cached mesh subdomains. As long as the mesh is prepared, this
+   * should contain all the subdomain ids across processors. Relies on the mesh
+   * being prepared
+   */
+  const std::set<subdomain_id_type> & get_mesh_subdomains() const
+  { libmesh_assert(this->is_prepared()); return _mesh_subdomains; }
 
 
   /**
@@ -1696,6 +1799,15 @@ protected:
 
 
 protected:
+  /**
+   * Moves any superclass data (e.g. GhostingFunctors that might rely
+   * on element and nodal data (which is managed by subclasses!)
+   * being already moved first.
+   *
+   * Must be manually called in dofobject-managing subclass move
+   * operators.
+   */
+  void post_dofobject_moves(MeshBase && other_mesh);
 
   /**
    * \returns A writable reference to the number of partitions.
@@ -1807,6 +1919,11 @@ protected:
    * will contain 1 and 2.
    */
   std::set<unsigned char> _elem_dims;
+
+  /**
+   * We cache the subdomain ids of the elements present in the mesh.
+   */
+  std::set<subdomain_id_type> _mesh_subdomains;
 
   /**
    * The "spatial dimension" of the Mesh.  See the documentation for

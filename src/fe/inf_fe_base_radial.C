@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -19,11 +19,14 @@
 
 // Local includes
 #include "libmesh/libmesh_config.h"
+
 #ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+
 #include "libmesh/inf_fe.h"
 #include "libmesh/inf_fe_macro.h"
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
+#include "libmesh/enum_to_string.h"
 
 namespace libMesh
 {
@@ -77,7 +80,7 @@ ElemType InfFEBase::get_elem_type (const ElemType type)
       return INVALID_ELEM;
 
     default:
-      libmesh_error_msg("ERROR: Unsupported element type!: " << type);
+      libmesh_error_msg("ERROR: Unsupported element type!: " << Utility::enum_to_string(type));
     }
 }
 

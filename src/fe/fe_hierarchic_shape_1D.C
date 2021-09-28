@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -60,6 +60,7 @@ namespace libMesh
 
 LIBMESH_DEFAULT_VECTORIZED_FE(1,HIERARCHIC)
 LIBMESH_DEFAULT_VECTORIZED_FE(1,L2_HIERARCHIC)
+LIBMESH_DEFAULT_VECTORIZED_FE(1,SIDE_HIERARCHIC)
 
 
 template <>
@@ -80,6 +81,18 @@ Real FE<1,L2_HIERARCHIC>::shape(const ElemType elem_type,
                                 const Point & p)
 {
   return fe_hierarchic_1D_shape(elem_type, order, i, p);
+}
+
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape(const ElemType,
+                                  const Order,
+                                  const unsigned int i,
+                                  const Point & p)
+{
+  unsigned int right_side = p(0) > 0; // 0 false, 1 true
+  return (right_side == i);
 }
 
 
@@ -137,6 +150,30 @@ Real FE<1,L2_HIERARCHIC>::shape(const FEType fet,
 }
 
 
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape(const Elem *,
+                                  const Order,
+                                  const unsigned int i,
+                                  const Point & p,
+                                  const bool)
+{
+  unsigned int right_side = p(0) > 0; // 0 false, 1 true
+  return (right_side == i);
+}
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape(const FEType,
+                                  const Elem *,
+                                  const unsigned int i,
+                                  const Point & p,
+                                  const bool)
+{
+  unsigned int right_side = p(0) > 0; // 0 false, 1 true
+  return (right_side == i);
+}
+
+
 template <>
 Real FE<1,HIERARCHIC>::shape_deriv(const ElemType elem_type,
                                    const Order order,
@@ -157,6 +194,18 @@ Real FE<1,L2_HIERARCHIC>::shape_deriv(const ElemType elem_type,
                                       const Point & p)
 {
   return fe_hierarchic_1D_shape_deriv(elem_type, order, i, j, p);
+}
+
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_deriv(const ElemType,
+                                        const Order,
+                                        const unsigned int,
+                                        const unsigned int,
+                                        const Point &)
+{
+  return 0;
 }
 
 
@@ -221,6 +270,32 @@ Real FE<1,L2_HIERARCHIC>::shape_deriv(const FEType fet,
 }
 
 
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_deriv(const Elem *,
+                                        const Order,
+                                        const unsigned int,
+                                        const unsigned int,
+                                        const Point &,
+                                        const bool)
+{
+  return 0;
+}
+
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_deriv(const FEType,
+                                        const Elem *,
+                                        const unsigned int,
+                                        const unsigned int,
+                                        const Point &,
+                                        const bool)
+{
+  return 0;
+}
+
+
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 
 template <>
@@ -245,6 +320,19 @@ Real FE<1,L2_HIERARCHIC>::shape_second_deriv(const ElemType elem_type,
 {
   return fe_hierarchic_1D_shape_second_deriv(elem_type, order, i, j, p);
 }
+
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_second_deriv(const ElemType,
+                                               const Order,
+                                               const unsigned int,
+                                               const unsigned int,
+                                               const Point &)
+{
+  return 0;
+}
+
 
 
 template <>
@@ -303,6 +391,30 @@ Real FE<1,L2_HIERARCHIC>::shape_second_deriv(const FEType fet,
   libmesh_assert(elem);
   return fe_hierarchic_1D_shape_second_deriv(elem->type(),
                                              static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
+}
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_second_deriv(const Elem *,
+                                               const Order,
+                                               const unsigned int,
+                                               const unsigned int,
+                                               const Point &,
+                                               const bool)
+{
+  return 0.;
+}
+
+
+template <>
+Real FE<1,SIDE_HIERARCHIC>::shape_second_deriv(const FEType,
+                                               const Elem *,
+                                               const unsigned int,
+                                               const unsigned int,
+                                               const Point &,
+                                               const bool)
+{
+  return 0.;
 }
 
 #endif

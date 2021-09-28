@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -269,14 +269,15 @@ void assemble_poisson(EquationSystems & es,
   // We will compute the element matrix and right-hand-side
   // contribution.
   //
-  // Element iterators are a nice way to iterate through all the
+  // Element ranges are a nice way to iterate through all the
   // elements, or all the elements that have some property.  The
-  // iterator el will iterate from the first to the last element on
-  // the local processor.  The iterator end_el tells us when to stop.
+  // range will iterate from the first to the last element on
+  // the local processor.
   // It is smart to make this one const so that we don't accidentally
   // mess it up!  In case users later modify this program to include
   // refinement, we will be safe and will only consider the active
-  // elements; hence we use a variant of the active_elem_iterator.
+  // elements; hence we use a variant of the
+  // active_local_element_ptr_range.
   for (const auto & elem : mesh.active_local_element_ptr_range())
     {
       // Get the degree of freedom indices for the

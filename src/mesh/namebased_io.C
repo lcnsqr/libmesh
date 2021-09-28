@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -234,12 +234,16 @@ void NameBasedIO::read (const std::string & name)
                    (new_name.rfind(".bxt")   < new_name.size()))
             DynaIO(mymesh).read (new_name);
 
+          else if (new_name.rfind(".bez")  < new_name.size())
+            DynaIO(mymesh, false).read (new_name);
+
           else
             {
               libmesh_error_msg(" ERROR: Unrecognized file extension: " \
                                 << name                                 \
                                 << "\n   I understand the following:\n\n" \
                                 << "     *.bext -- Bezier files in DYNA format\n" \
+                                << "     *.bez  -- Bezier DYNA files, omit spline nodes\n" \
                                 << "     *.bxt  -- Bezier files in DYNA format\n" \
                                 << "     *.cpa  -- libMesh Checkpoint ASCII format\n" \
                                 << "     *.cpr  -- libMesh Checkpoint binary format\n" \

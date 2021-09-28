@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,81 @@
 #include "libmesh/face_tri3.h"
 #include "libmesh/enum_io_package.h"
 #include "libmesh/enum_order.h"
+#include "libmesh/fe_lagrange_shape_1D.h"
+
+// C++ includes
+#include <array>
+
+// Helper functions for computing volume() and true_centroid()
+namespace {
+
+using namespace libMesh;
+
+// Templated numerical quadrature implementation function used by both
+// Prism6::volume() and Prism6::true_centroid() routines.
+template <typename T>
+void cell_integral(const Elem * elem, T & t);
+
+/**
+ * Object passed to cell_integral() routine for computing the cell volume.
+ */
+struct VolumeIntegral
+{
+  // API
+  void accumulate_qp(Real /*xi*/, Real /*eta*/, Real /*zeta*/, Real JxW)
+  {
+    vol += JxW;
+  };
+
+  Real vol = 0.;
+};
+
+/**
+ * Object passed to cell_integral() routine for computing the nodal
+ * volumes (one value per node)
+ */
+struct NodalVolumeIntegral
+{
+  // API
+  void accumulate_qp(Real xi, Real eta, Real zeta, Real JxW)
+  {
+    // Copied from fe_lagrange_shape_3D.C
+    static const unsigned int i0[] = {0, 0, 0, 1, 1, 1};
+    static const unsigned int i1[] = {0, 1, 2, 0, 1, 2};
+
+    // Copied from fe_lagrange_shape_2D.C
+    auto tri3_phi = [](int i, Real x, Real y)
+    {
+      switch(i)
+      {
+        case 0:
+          return 1. - x - y;
+
+        case 1:
+          return x;
+
+        case 2:
+          return y;
+
+        default:
+          libmesh_error_msg("Invalid shape function index i = " << i);
+      }
+    };
+
+    for (int i=0; i<6; ++i)
+      {
+        Real phi =
+          tri3_phi(i1[i], xi, eta) * fe_lagrange_1D_linear_shape(i0[i], zeta);
+
+        V[i] += phi * JxW;
+      }
+  };
+
+  // nodal volumes
+  std::array<Real, 6> V {};
+};
+
+}
 
 namespace libMesh
 {
@@ -140,8 +215,8 @@ bool Prism6::has_affine_map() const
 {
   // Make sure z edges are affine
   Point v = this->point(3) - this->point(0);
-  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1)) ||
-      !v.relative_fuzzy_equals(this->point(5) - this->point(2)))
+  if (!v.relative_fuzzy_equals(this->point(4) - this->point(1), affine_tol) ||
+      !v.relative_fuzzy_equals(this->point(5) - this->point(2), affine_tol))
     return false;
   return true;
 }
@@ -163,6 +238,8 @@ std::unique_ptr<Elem> Prism6::build_side_ptr (const unsigned int i,
   std::unique_ptr<Elem> face;
   if (proxy)
     {
+#ifdef LIBMESH_ENABLE_DEPRECATED
+      libmesh_deprecated();
       switch(i)
         {
         case 0:
@@ -183,8 +260,10 @@ std::unique_ptr<Elem> Prism6::build_side_ptr (const unsigned int i,
         default:
           libmesh_error_msg("Invalid side i = " << i);
         }
+#else
+      libmesh_error();
+#endif // LIBMESH_ENABLE_DEPRECATED
     }
-
   else
     {
       switch (i)
@@ -217,6 +296,11 @@ std::unique_ptr<Elem> Prism6::build_side_ptr (const unsigned int i,
     face->set_parent(nullptr);
   face->set_interior_parent(this);
 
+  face->subdomain_id() = this->subdomain_id();
+#ifdef LIBMESH_ENABLE_AMR
+  face->set_p_level(this->p_level());
+#endif
+
   return face;
 }
 
@@ -232,9 +316,14 @@ void Prism6::build_side_ptr (std::unique_ptr<Elem> & side,
 
 std::unique_ptr<Elem> Prism6::build_edge_ptr (const unsigned int i)
 {
-  libmesh_assert_less (i, this->n_edges());
+  return this->simple_build_edge_ptr<Edge2,Prism6>(i);
+}
 
-  return libmesh_make_unique<SideEdge<Edge2,Prism6>>(this,i);
+
+
+void Prism6::build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i)
+{
+  this->simple_build_edge_ptr<Prism6>(edge, i, EDGE2);
 }
 
 
@@ -284,7 +373,7 @@ void Prism6::connectivity(const unsigned int libmesh_dbg_var(sc),
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Prism6::_embedding_matrix[Prism6::num_children][Prism6::num_nodes][Prism6::num_nodes] =
+const Real Prism6::_embedding_matrix[Prism6::num_children][Prism6::num_nodes][Prism6::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -379,13 +468,77 @@ const float Prism6::_embedding_matrix[Prism6::num_children][Prism6::num_nodes][P
 
 
 
+Point Prism6::true_centroid () const
+{
+  NodalVolumeIntegral nvi;
+  cell_integral(this, nvi);
+
+  // Compute centroid
+  Point cp;
+  Real vol = 0.;
+
+  for (int i=0; i<6; ++i)
+    {
+      cp += this->point(i) * nvi.V[i];
+      vol += nvi.V[i];
+    }
+
+  return cp / vol;
+}
+
 Real Prism6::volume () const
 {
-  // Make copies of our points.  It makes the subsequent calculations a bit
-  // shorter and avoids dereferencing the same pointer multiple times.
-  Point
-    x0 = point(0), x1 = point(1), x2 = point(2),
-    x3 = point(3), x4 = point(4), x5 = point(5);
+  VolumeIntegral vi;
+  cell_integral(this, vi);
+  return vi.vol;
+}
+
+BoundingBox
+Prism6::loose_bounding_box () const
+{
+  return Elem::loose_bounding_box();
+}
+
+
+void
+Prism6::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 6);
+  const unsigned int side = perm_num % 2;
+  const unsigned int rotate = perm_num / 2;
+
+  for (unsigned int i = 0; i != rotate; ++i)
+    {
+      swap3nodes(0,1,2);
+      swap3nodes(3,4,5);
+    }
+
+  switch (side) {
+  case 0:
+    break;
+  case 1:
+    swap2nodes(1,3);
+    swap2nodes(0,4);
+    swap2nodes(2,5);
+    break;
+  default:
+    libmesh_error();
+  }
+
+}
+
+} // namespace libMesh
+
+namespace // anonymous
+{
+
+template <typename T>
+void cell_integral(const Elem * elem, T & t)
+{
+  // Conveient references to our points.
+  const Point
+    &x0 = elem->point(0), &x1 = elem->point(1), &x2 = elem->point(2),
+    &x3 = elem->point(3), &x4 = elem->point(4), &x5 = elem->point(5);
 
   // constant and zeta terms only.  These are copied directly from a
   // Python script.
@@ -411,7 +564,7 @@ Real Prism6::volume () const
       x0/2 - x1/2 - x3/2 + x4/2  // xi
     };
 
-  // The quadrature rule the Prism6 is a tensor product between a
+  // The quadrature rule for the Prism6 is a tensor product between a
   // four-point TRI3 rule (in xi, eta) and a two-point EDGE2 rule (in
   // zeta) which is capable of integrating cubics exactly.
 
@@ -453,7 +606,6 @@ Real Prism6::volume () const
       std::sqrt(3.)/3.
     };
 
-  Real vol = 0.;
   for (int i=0; i<N2D; ++i)
     {
       // dx_dzeta depends only on the 2D quadrature rule points.
@@ -466,18 +618,10 @@ Real Prism6::volume () const
             dx_dxi_q  = dx_dxi[0]  + zeta[j]*dx_dxi[1],
             dx_deta_q = dx_deta[0] + zeta[j]*dx_deta[1];
 
-          // Compute scalar triple product, multiply by weight, and accumulate volume.
-          vol += w2D[i] * triple_product(dx_dxi_q, dx_deta_q, dx_dzeta_q);
+          // Compute t-specific contributions at current qp
+          t.accumulate_qp(xi[i], eta[i], zeta[j], w2D[i] * triple_product(dx_dxi_q, dx_deta_q, dx_dzeta_q));
         }
     }
-
-  return vol;
 }
 
-BoundingBox
-Prism6::loose_bounding_box () const
-{
-  return Elem::loose_bounding_box();
 }
-
-} // namespace libMesh

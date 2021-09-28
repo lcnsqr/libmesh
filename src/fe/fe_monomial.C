@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -121,6 +121,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -130,6 +131,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -167,6 +169,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -176,6 +179,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -213,6 +217,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -222,6 +227,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -258,6 +264,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -267,6 +274,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:
@@ -302,6 +310,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
           case QUAD4:
           case QUADSHELL4:
           case QUAD8:
@@ -311,6 +320,7 @@ unsigned int monomial_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
           case HEX8:
           case HEX20:
           case HEX27:

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -515,8 +515,7 @@ void Build::parallel_sync ()
   std::map<processor_id_type, std::vector<dof_id_type>> received_ids_map;
 
   auto ids_action_functor =
-    [this,
-     & received_ids_map]
+    [& received_ids_map]
     (processor_id_type pid,
      const std::vector<dof_id_type> & received_ids)
     {

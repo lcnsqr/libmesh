@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -134,7 +134,7 @@ public:
    * The \p std::unique_ptr<Elem> handles the memory aspect.
    */
   virtual std::unique_ptr<Elem> build_side_ptr (const unsigned int i,
-                                                bool proxy=true) override;
+                                                bool proxy=false) override;
 
   /**
    * Rebuilds a \p QUAD4 built coincident with face i.
@@ -147,6 +147,11 @@ public:
    * The \p std::unique_ptr<Elem> handles the memory aspect.
    */
   virtual std::unique_ptr<Elem> build_edge_ptr (const unsigned int i) override;
+
+  /**
+   * Rebuilds a \p EDGE2 built coincident with edge i.
+   */
+  virtual void build_edge_ptr (std::unique_ptr<Elem> & edge, const unsigned int i) override;
 
   virtual void connectivity(const unsigned int sc,
                             const IOPackage iop,
@@ -180,6 +185,25 @@ public:
   static const unsigned int edge_sides_map[num_edges][2];
 
   /**
+   * Class static helper function that computes the centroid of a
+   * hexahedral region from a set of input points which are assumed to
+   * be in the standard "Hex8" ordering, possibly with some duplicates
+   * indicating a "degenerate" side. Hex8::true_centroid() and
+   * Pyramid5::true_centroid() are implemented in terms of this
+   * function.
+   */
+  static Point centroid_from_points(
+    const Point & x0, const Point & x1, const Point & x2, const Point & x3,
+    const Point & x4, const Point & x5, const Point & x6, const Point & x7);
+
+  /**
+   * We compute the centroid of the Hex using a customized numerical
+   * quadrature approach that avoids unnecessary object creation/heap
+   * allocations.
+   */
+  virtual Point true_centroid () const override;
+
+  /**
    * A specialization for computing the area of a hexahedron
    * with flat sides.
    */
@@ -189,6 +213,8 @@ public:
    * Builds a bounding box out of the nodal positions
    */
   virtual BoundingBox loose_bounding_box () const override;
+
+  virtual void permute(unsigned int perm_num) override final;
 
 protected:
 
@@ -204,16 +230,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[num_children][num_nodes][num_nodes];
+  static const Real _embedding_matrix[num_children][num_nodes][num_nodes];
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;
 

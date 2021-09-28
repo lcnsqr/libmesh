@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,7 +35,7 @@ const int Edge3::nodes_per_edge;
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Edge3::_embedding_matrix[2][3][3] =
+const Real Edge3::_embedding_matrix[2][3][3] =
   {
     // embedding matrix for child 0
     {
@@ -94,8 +94,49 @@ bool Edge3::is_node_on_edge(const unsigned int,
 
 bool Edge3::has_affine_map() const
 {
-  return (this->point(2).relative_fuzzy_equals
-          ((this->point(0) + this->point(1))/2));
+  Point v = this->point(1) - this->point(0);
+  return (v.relative_fuzzy_equals
+          ((this->point(2) - this->point(0))*2, affine_tol));
+}
+
+
+
+bool Edge3::has_invertible_map(Real tol) const
+{
+  // At the moment this only makes sense for Lagrange elements
+  libmesh_assert_equal_to(this->mapping_type(), LAGRANGE_MAP);
+
+  // The "Jacobian vector" (dx/dxi, dy/dxi, dz/dxi) is:
+  // j(xi) := a*xi + b, where
+  Point a = this->point(0) + this->point(1) - 2 * this->point(2);
+  Point b = .5 * (this->point(1) - this->point(0));
+
+  // Now we solve for the point xi_m where j(xi_m) \cdot j(0) = 0.
+  // If this occurs somewhere on the reference element, then the
+  // element is not invertible.
+  // j(xi_m) . j(0) = 0
+  // <=>
+  // (a*xi_m + b) . b = 0
+  // <=>
+  // (a.b)*xi_m + b.b = 0
+  // <=>
+  // xi_m = -(b.b) / (a.b)
+
+  // 1.) If b.b==0, then the endpoints of the Edge3 are at the same
+  //     location, and the map is therefore not invertible.
+  Real b_norm2 = b.norm_sq();
+  if (b_norm2 <= tol*tol)
+    return false;
+
+  // 2.) If a.b==0, but b != 0 (see above), then the element is
+  //     invertible but we don't want to divide by zero in the
+  //     formula, so simply return true.
+  Real ab = a * b;
+  if (std::abs(ab) <= tol*tol)
+    return true;
+
+  Real xi_m = -b_norm2 / ab;
+  return (xi_m < -1.) || (xi_m > 1.);
 }
 
 

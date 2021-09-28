@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -111,6 +111,11 @@ public:
   virtual bool has_affine_map () const override { return true; }
 
   /**
+   * \returns \p true if the element has non-zero volume(), false otherwise.
+   */
+  virtual bool has_invertible_map(Real tol) const override;
+
+  /**
    * \returns \p true if the Lagrange shape functions on this element
    * are linear.
    */
@@ -129,6 +134,12 @@ public:
   virtual void connectivity(const unsigned int sc,
                             const IOPackage iop,
                             std::vector<dof_id_type> & conn) const override;
+
+  /**
+   * An optimized method for computing the centroid of a
+   * 2-node edge.
+   */
+  virtual Point true_centroid () const override;
 
   /**
    * An optimized method for computing the length of a 2-node edge.
@@ -180,16 +191,16 @@ protected:
   /**
    * Matrix used to create the elements children.
    */
-  virtual float embedding_matrix (const unsigned int i,
-                                  const unsigned int j,
-                                  const unsigned int k) const override
+  virtual Real embedding_matrix (const unsigned int i,
+                                 const unsigned int j,
+                                 const unsigned int k) const override
   { return _embedding_matrix[i][j][k]; }
 
   /**
    * Matrix that computes new nodal locations/solution values
    * from current nodes/solution.
    */
-  static const float _embedding_matrix[num_children][num_nodes][num_nodes];
+  static const Real _embedding_matrix[num_children][num_nodes][num_nodes];
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;
 

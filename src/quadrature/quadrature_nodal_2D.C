@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -142,6 +142,25 @@ void QNodal::init_2D(const ElemType, unsigned int)
         rule.init(_type, /*ignored*/_p_level);
         _points.swap (rule.get_points());
         _weights.swap(rule.get_weights());
+        return;
+      }
+
+    case TRI7:
+      {
+        // We can't exactly represent cubics with only seven nodes,
+        // but with w_i = integral(phi_i) for Lagrange shape functions
+        // phi_i, we not only get exact integrals of every Lagrange
+        // shape function, including the cubic bubble, we also get
+        // exact integrals of the rest of P^3 too.
+         _points =
+          {
+            Point(0.,0.), Point(+1,0.), Point(0.,+1), Point(.5,0.),
+            Point(.5,.5), Point(0.,.5), Point(1/Real(3),1/Real(3))
+          };
+
+        Real wv = Real(1)/15;
+        Real we = Real(1)/40;
+        _weights = {wv, wv, wv, we, we, we, Real(9)/40};
         return;
       }
 

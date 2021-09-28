@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -198,6 +198,9 @@ public:
   virtual std::unique_ptr<Elem> build_edge_ptr (const unsigned int) override
   { libmesh_not_implemented(); return std::unique_ptr<Elem>(); }
 
+  virtual void build_edge_ptr (std::unique_ptr<Elem> &, const unsigned int) override
+  { libmesh_not_implemented(); }
+
   virtual Order default_order () const override
   { libmesh_not_implemented(); return static_cast<Order>(1); }
 
@@ -214,15 +217,21 @@ public:
    * Matrix that transforms the parents nodes into the children's
    * nodes.
    */
-  virtual float embedding_matrix (const unsigned int,
-                                  const unsigned int,
-                                  const unsigned int) const override
+  virtual Real embedding_matrix (const unsigned int,
+                                 const unsigned int,
+                                 const unsigned int) const override
   { libmesh_not_implemented(); return 0.; }
 
   LIBMESH_ENABLE_TOPOLOGY_CACHES;
 
 #endif // LIBMESH_ENABLE_AMR
 
+  virtual unsigned int n_permutations() const override { libmesh_error(); return 0; }
+
+  virtual void permute(unsigned int) override { libmesh_error(); }
+
+  virtual unsigned int center_node_on_side(const unsigned short) const override
+  { libmesh_error(); return invalid_uint; }
 
 protected:
 

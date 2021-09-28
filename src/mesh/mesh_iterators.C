@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -157,6 +157,7 @@ INSTANTIATE_ELEM_ACCESSORS(active_subdomain_elements,       ActiveSubdomain,    
 INSTANTIATE_ELEM_ACCESSORS(active_subdomain_set_elements,   ActiveSubdomainSet,   std::set<subdomain_id_type> ss, ss)
 INSTANTIATE_ELEM_ACCESSORS(ghost_elements,                  Ghost,                EMPTY,                          this->processor_id())
 INSTANTIATE_ELEM_ACCESSORS(evaluable_elements,              Evaluable,            const DofMap & dof_map LIBMESH_COMMA unsigned int var_num, dof_map, var_num)
+INSTANTIATE_ELEM_ACCESSORS(multi_evaluable_elements,        MultiEvaluable,       std::vector<const DofMap *> dof_maps, dof_maps)
 INSTANTIATE_ELEM_ACCESSORS(unpartitioned_elements,          PID,                  EMPTY,                          DofObject::invalid_processor_id)
 INSTANTIATE_ELEM_ACCESSORS(active_unpartitioned_elements,   ActivePID,            EMPTY,                          DofObject::invalid_processor_id)
 
@@ -165,9 +166,10 @@ INSTANTIATE_ELEM_ACCESSORS(flagged_elements,                Flagged,            
 INSTANTIATE_ELEM_ACCESSORS(flagged_pid_elements,            FlaggedPID,           unsigned char rflag LIBMESH_COMMA processor_id_type pid,    rflag, pid)
 #endif
 
-INSTANTIATE_ELEM_ACCESSORS(local_level_elements,            LocalLevel,           unsigned int level,             this->processor_id(), level)
-INSTANTIATE_ELEM_ACCESSORS(local_not_level_elements,        LocalNotLevel,        unsigned int level,             this->processor_id(), level)
-INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_elements, ActiveLocalSubdomain, subdomain_id_type subdomain_id, this->processor_id(), subdomain_id)
+INSTANTIATE_ELEM_ACCESSORS(local_level_elements,                LocalLevel,              unsigned int level,             this->processor_id(), level)
+INSTANTIATE_ELEM_ACCESSORS(local_not_level_elements,            LocalNotLevel,           unsigned int level,             this->processor_id(), level)
+INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_elements,     ActiveLocalSubdomain,    subdomain_id_type subdomain_id, this->processor_id(), subdomain_id)
+INSTANTIATE_ELEM_ACCESSORS(active_local_subdomain_set_elements, ActiveLocalSubdomainSet, std::set<subdomain_id_type> ss, this->processor_id(), ss)
 
 // Instantiate various node iterator accessor functions.
 INSTANTIATE_NODE_ACCESSORS(nodes,        NotNull, EMPTY,                               EMPTY)
@@ -177,5 +179,6 @@ INSTANTIATE_NODE_ACCESSORS(pid_nodes,    PID,     processor_id_type proc_id,    
 INSTANTIATE_NODE_ACCESSORS(bnd_nodes,    BND,     EMPTY,                               this->get_boundary_info())
 INSTANTIATE_NODE_ACCESSORS(bid_nodes,    BID,     boundary_id_type bndry_id, bndry_id, this->get_boundary_info())
 INSTANTIATE_NODE_ACCESSORS(evaluable_nodes, Evaluable, const DofMap & dof_map LIBMESH_COMMA unsigned int var_num, dof_map, var_num)
+INSTANTIATE_NODE_ACCESSORS(multi_evaluable_nodes, MultiEvaluable, std::vector<const DofMap *> dof_maps, dof_maps)
 
 } // namespace libMesh

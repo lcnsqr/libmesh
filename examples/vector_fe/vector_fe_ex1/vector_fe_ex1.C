@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,7 @@
 #include "libmesh/exodusII_io.h"
 #include "libmesh/gmv_io.h"
 #include "libmesh/enum_solver_package.h"
+#include "libmesh/getpot.h"
 
 // Define the Finite Element object.
 #include "libmesh/fe.h"
@@ -97,6 +98,15 @@ int main (int argc, char ** argv)
   // Skip this 2D example if libMesh was compiled as 1D-only.
   libmesh_example_requires(2 <= LIBMESH_DIM, "2D support");
 
+  // Get the mesh size from the command line.
+  GetPot command_line (argc, argv);
+
+  int nx = 15, ny = 15;
+  if (command_line.search(1, "-nx"))
+    nx = command_line.next(nx);
+  if (command_line.search(1, "-ny"))
+    ny = command_line.next(ny);
+
   // Create a mesh, with dimension to be overridden later, on the
   // default MPI communicator.
   Mesh mesh(init.comm());
@@ -105,7 +115,7 @@ int main (int argc, char ** argv)
   // 2D grid on the square [-1,1]^2.  We instruct the mesh generator
   // to build a mesh of 15x15 QUAD9 elements.
   MeshTools::Generation::build_square (mesh,
-                                       15, 15,
+                                       nx, ny,
                                        -1., 1.,
                                        -1., 1.,
                                        QUAD9);

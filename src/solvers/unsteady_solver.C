@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -310,10 +310,12 @@ void UnsteadySolver::integrate_qoi_timestep()
   libmesh_not_implemented();
 }
 
+#ifdef LIBMESH_ENABLE_AMR
 void UnsteadySolver::integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & /*adjoint_refinement_error_estimator*/, ErrorVector & /*QoI_elementwise_error*/)
 {
   libmesh_not_implemented();
 }
+#endif // LIBMESH_ENABLE_AMR
 
 Number UnsteadySolver::old_nonlinear_solution(const dof_id_type global_dof_number)
   const

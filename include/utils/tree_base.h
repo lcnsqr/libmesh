@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -55,7 +55,7 @@ namespace Trees
  * \date 2003
  * \brief Base class for different Tree types.
  */
-enum BuildType {NODES=0,
+enum BuildType : int {NODES=0,
                 ELEMENTS,
                 LOCAL_ELEMENTS,
                 INVALID_BUILD_TYPE };

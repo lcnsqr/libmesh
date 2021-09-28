@@ -51,6 +51,7 @@ BUILT_SOURCES = \
         enum_norm_type.h \
         enum_order.h \
         enum_parallel_type.h \
+        enum_partitioner_type.h \
         enum_point_locator_type.h \
         enum_preconditioner_type.h \
         enum_quadrature_type.h \
@@ -117,6 +118,7 @@ BUILT_SOURCES = \
         cell_pyramid5.h \
         cell_tet.h \
         cell_tet10.h \
+        cell_tet14.h \
         cell_tet4.h \
         compare_elems_by_level.h \
         edge.h \
@@ -145,6 +147,7 @@ BUILT_SOURCES = \
         face_tri3_shell.h \
         face_tri3_subdivision.h \
         face_tri6.h \
+        face_tri7.h \
         node.h \
         node_elem.h \
         node_range.h \
@@ -235,6 +238,7 @@ BUILT_SOURCES = \
         function_base.h \
         laspack_matrix.h \
         laspack_vector.h \
+        lumped_mass_matrix.h \
         numeric_vector.h \
         parsed_fem_function.h \
         parsed_fem_function_parameter.h \
@@ -397,6 +401,7 @@ BUILT_SOURCES = \
         frequency_system.h \
         generic_projector.h \
         implicit_system.h \
+        inter_mesh_projection.h \
         linear_implicit_system.h \
         newmark_system.h \
         nonlinear_implicit_system.h \
@@ -432,6 +437,7 @@ BUILT_SOURCES = \
         request.h \
         standard_type.h \
         status.h \
+        chunked_mapvector.h \
         compare_types.h \
         enum_to_string.h \
         error_vector.h \
@@ -451,6 +457,7 @@ BUILT_SOURCES = \
         perfmon.h \
         plt_loader.h \
         point_locator_base.h \
+        point_locator_nanoflann.h \
         point_locator_tree.h \
         pointer_to_pointer_iter.h \
         pool_allocator.h \
@@ -514,6 +521,16 @@ endif
 if LIBMESH_ENABLE_EXODUS_V522
 
 exodusII.h: $(top_srcdir)/contrib/exodusii/v5.22/exodus/cbind/include/exodusII.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+  BUILT_SOURCES  += exodusII.h
+  DISTCLEANFILES += exodusII.h
+
+endif
+
+if LIBMESH_ENABLE_EXODUS_V811
+
+exodusII.h: $(top_srcdir)/contrib/exodusii/v8.11/exodus/include/exodusII.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
   BUILT_SOURCES  += exodusII.h
@@ -685,6 +702,9 @@ enum_order.h: $(top_srcdir)/include/enums/enum_order.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 enum_parallel_type.h: $(top_srcdir)/include/enums/enum_parallel_type.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+enum_partitioner_type.h: $(top_srcdir)/include/enums/enum_partitioner_type.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 enum_point_locator_type.h: $(top_srcdir)/include/enums/enum_point_locator_type.h
@@ -885,6 +905,9 @@ cell_tet.h: $(top_srcdir)/include/geom/cell_tet.h
 cell_tet10.h: $(top_srcdir)/include/geom/cell_tet10.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
+cell_tet14.h: $(top_srcdir)/include/geom/cell_tet14.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
 cell_tet4.h: $(top_srcdir)/include/geom/cell_tet4.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
@@ -967,6 +990,9 @@ face_tri3_subdivision.h: $(top_srcdir)/include/geom/face_tri3_subdivision.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 face_tri6.h: $(top_srcdir)/include/geom/face_tri6.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+face_tri7.h: $(top_srcdir)/include/geom/face_tri7.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 node.h: $(top_srcdir)/include/geom/node.h
@@ -1237,6 +1263,9 @@ laspack_matrix.h: $(top_srcdir)/include/numerics/laspack_matrix.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 laspack_vector.h: $(top_srcdir)/include/numerics/laspack_vector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+lumped_mass_matrix.h: $(top_srcdir)/include/numerics/lumped_mass_matrix.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 numeric_vector.h: $(top_srcdir)/include/numerics/numeric_vector.h
@@ -1725,6 +1754,9 @@ generic_projector.h: $(top_srcdir)/include/systems/generic_projector.h
 implicit_system.h: $(top_srcdir)/include/systems/implicit_system.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
+inter_mesh_projection.h: $(top_srcdir)/include/systems/inter_mesh_projection.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
 linear_implicit_system.h: $(top_srcdir)/include/systems/linear_implicit_system.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
@@ -1830,6 +1862,9 @@ standard_type.h: $(top_srcdir)/include/timpi_shims/standard_type.h
 status.h: $(top_srcdir)/include/timpi_shims/status.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
+chunked_mapvector.h: $(top_srcdir)/include/utils/chunked_mapvector.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
 compare_types.h: $(top_srcdir)/include/utils/compare_types.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
@@ -1885,6 +1920,9 @@ plt_loader.h: $(top_srcdir)/include/utils/plt_loader.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 point_locator_base.h: $(top_srcdir)/include/utils/point_locator_base.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+point_locator_nanoflann.h: $(top_srcdir)/include/utils/point_locator_nanoflann.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 point_locator_tree.h: $(top_srcdir)/include/utils/point_locator_tree.h

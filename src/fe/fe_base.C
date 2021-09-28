@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -38,6 +38,7 @@
 #include "libmesh/tensor_value.h"
 #include "libmesh/threads.h"
 #include "libmesh/fe_type.h"
+#include "libmesh/enum_to_string.h"
 
 // Anonymous namespace, for a helper function for periodic boundary
 // constraint calculations
@@ -211,6 +212,9 @@ FEGenericBase<Real>::build (const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<0,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<0,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<0,MONOMIAL>>(fet);
 
@@ -232,7 +236,7 @@ FEGenericBase<Real>::build (const unsigned int dim,
             return libmesh_make_unique<FEScalar<0>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
       // 1D
@@ -258,6 +262,9 @@ FEGenericBase<Real>::build (const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<1,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<1,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<1,MONOMIAL>>(fet);
 
@@ -279,7 +286,7 @@ FEGenericBase<Real>::build (const unsigned int dim,
             return libmesh_make_unique<FEScalar<1>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -307,6 +314,9 @@ FEGenericBase<Real>::build (const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<2,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<2,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<2,MONOMIAL>>(fet);
 
@@ -331,7 +341,7 @@ FEGenericBase<Real>::build (const unsigned int dim,
             return libmesh_make_unique<FESubdivision>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -359,6 +369,9 @@ FEGenericBase<Real>::build (const unsigned int dim,
           case L2_HIERARCHIC:
             return libmesh_make_unique<FE<3,L2_HIERARCHIC>>(fet);
 
+          case SIDE_HIERARCHIC:
+            return libmesh_make_unique<FE<3,SIDE_HIERARCHIC>>(fet);
+
           case MONOMIAL:
             return libmesh_make_unique<FE<3,MONOMIAL>>(fet);
 
@@ -380,7 +393,7 @@ FEGenericBase<Real>::build (const unsigned int dim,
             return libmesh_make_unique<FEScalar<3>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -410,7 +423,7 @@ FEGenericBase<RealGradient>::build (const unsigned int dim,
             return libmesh_make_unique<FEMonomialVec<0>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
     case 1:
@@ -424,7 +437,7 @@ FEGenericBase<RealGradient>::build (const unsigned int dim,
             return libmesh_make_unique<FEMonomialVec<1>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
     case 2:
@@ -441,7 +454,7 @@ FEGenericBase<RealGradient>::build (const unsigned int dim,
             return libmesh_make_unique<FENedelecOne<2>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
     case 3:
@@ -458,7 +471,7 @@ FEGenericBase<RealGradient>::build (const unsigned int dim,
             return libmesh_make_unique<FENedelecOne<3>>(fet);
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.family= " << fet.family);
+            libmesh_error_msg("ERROR: Bad FEType.family == " << Utility::enum_to_string(fet.family));
           }
       }
 
@@ -490,7 +503,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
         switch (fet.radial_family)
           {
           case INFINITE_MAP:
-            libmesh_error_msg("ERROR: Can't build an infinite element with FEFamily = " << fet.radial_family);
+            libmesh_error_msg("ERROR: Can't build an infinite element with FEFamily = " << Utility::enum_to_string(fet.radial_family));
 
           case JACOBI_20_00:
             {
@@ -500,7 +513,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<1,JACOBI_20_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -512,7 +525,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<1,JACOBI_30_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -524,7 +537,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<1,LEGENDRE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -536,12 +549,12 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<1,LAGRANGE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Can't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << fet.radial_family);
+            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << Utility::enum_to_string(fet.radial_family));
           }
       }
 
@@ -554,7 +567,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
         switch (fet.radial_family)
           {
           case INFINITE_MAP:
-            libmesh_error_msg("ERROR: Can't build an infinite element with FEFamily = " << fet.radial_family);
+            libmesh_error_msg("ERROR: Can't build an infinite element with FEFamily = " << Utility::enum_to_string(fet.radial_family));
 
           case JACOBI_20_00:
             {
@@ -564,7 +577,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<2,JACOBI_20_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -576,7 +589,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<2,JACOBI_30_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -588,7 +601,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<2,LEGENDRE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -600,12 +613,12 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<2,LAGRANGE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << fet.radial_family);
+            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << Utility::enum_to_string(fet.radial_family));
           }
       }
 
@@ -618,7 +631,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
         switch (fet.radial_family)
           {
           case INFINITE_MAP:
-            libmesh_error_msg("ERROR: Don't build an infinite element with FEFamily = " << fet.radial_family);
+            libmesh_error_msg("ERROR: Don't build an infinite element with FEFamily = " << Utility::enum_to_string(fet.radial_family));
 
           case JACOBI_20_00:
             {
@@ -628,7 +641,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<3,JACOBI_20_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -640,7 +653,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<3,JACOBI_30_00,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -652,7 +665,7 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<3,LEGENDRE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
@@ -664,12 +677,12 @@ FEGenericBase<Real>::build_InfFE (const unsigned int dim,
                   return libmesh_make_unique<InfFE<3,LAGRANGE,CARTESIAN>>(fet);
 
                 default:
-                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << fet.inf_map);
+                  libmesh_error_msg("ERROR: Don't build an infinite element with InfMapType = " << Utility::enum_to_string(fet.inf_map));
                 }
             }
 
           default:
-            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << fet.radial_family);
+            libmesh_error_msg("ERROR: Bad FEType.radial_family= " << Utility::enum_to_string(fet.radial_family));
           }
       }
 
@@ -731,7 +744,7 @@ void FEGenericBase<OutputType>::compute_shape_functions (const Elem * elem,
 }
 
 template <>
-void FEGenericBase<Real>::compute_dual_shape_coeffs ()
+void FEGenericBase<Real>::compute_dual_shape_coeffs (const QBase & default_qrule)
 {
   // Start logging the dual coeff computation
   LOG_SCOPE("compute_dual_shape_coeffs()", "FE");
@@ -743,25 +756,25 @@ void FEGenericBase<Real>::compute_dual_shape_coeffs ()
   dual_coeff.resize(sz, sz);
   DenseMatrix<Real> A(sz, sz), D(sz, sz);
 
-  const std::vector<Real> JxW = this->get_JxW();
-
-  for (auto i : index_range(phi))
-    for (auto qp : index_range(phi[i]))
+  const std::vector<Real> & weights = default_qrule.get_weights();
+  // we do not need J here as it will be canceled in the A^-1*D calculation anyways
+  for (const auto i : index_range(dual_phi))
+    for (const auto qp : index_range(dual_phi[i]))
     {
-      D(i,i) += JxW[qp]*phi[i][qp];
-      for (auto j : index_range(phi))
-        A(i,j) += JxW[qp]*phi[i][qp]*phi[j][qp];
+      D(i,i) += weights[qp]*dual_phi[i][qp];
+      for (const auto j : index_range(dual_phi))
+        A(i,j) += weights[qp]*dual_phi[i][qp]*dual_phi[j][qp];
     }
 
   // dual_coeff = A^-1*D
-  for (auto j : index_range(phi))
+  for (const auto j : index_range(dual_phi))
   {
     DenseVector<Real> Dcol(sz), coeffcol(sz);
-    for (auto i : index_range(phi))
+    for (const auto i : index_range(dual_phi))
       Dcol(i) = D(i, j);
     A.cholesky_solve(Dcol, coeffcol);
 
-    for (auto row : index_range(phi))
+    for (const auto row : index_range(dual_phi))
       dual_coeff(row, j)=coeffcol(row);
   }
 }
@@ -777,8 +790,8 @@ void FEGenericBase<Real>::compute_dual_shape_functions ()
   libmesh_assert(dual_coeff.n() == phi.size());
 
   // initialize dual basis
-  for (auto j : index_range(phi))
-    for (auto qp : index_range(phi[j]))
+  for (const auto j : index_range(phi))
+    for (const auto qp : index_range(phi[j]))
     {
       dual_phi[j][qp] = 0;
       if (calculate_dphi)
@@ -790,9 +803,9 @@ void FEGenericBase<Real>::compute_dual_shape_functions ()
     }
 
   // compute dual basis
-  for (auto j : index_range(phi))
-    for (auto i : index_range(phi))
-      for (auto qp : index_range(phi[j]))
+  for (const auto j : index_range(phi))
+    for (const auto i : index_range(phi))
+      for (const auto qp : index_range(phi[j]))
       {
         dual_phi[j][qp] += dual_coeff(i, j) * phi[i][qp];
         if (calculate_dphi)
@@ -1521,6 +1534,17 @@ FEGenericBase<OutputType>::compute_proj_constraints (DofConstraints & constraint
   if (!elem->active())
     return;
 
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+   if (elem->infinite())
+   {
+      // this would require some generalisation:
+      //  - e.g. the 'my_fe'-object needs generalisation
+      //  - due to lack of one-to-one correspondence of DOFs and nodes,
+      //    this doesn't work easily.
+      libmesh_not_implemented();
+   }
+#endif
+
   const Variable & var = dof_map.variable(variable_number);
   const FEType & base_fe_type = var.type();
 
@@ -1532,7 +1556,8 @@ FEGenericBase<OutputType>::compute_proj_constraints (DofConstraints & constraint
   // We don't need to constrain discontinuous elements
   if (cont == DISCONTINUOUS)
     return;
-  libmesh_assert (cont == C_ZERO || cont == C_ONE);
+  libmesh_assert (cont == C_ZERO || cont == C_ONE ||
+                  cont == SIDE_DISCONTINUOUS);
 
   std::unique_ptr<FEGenericBase<OutputShape>> neigh_fe
     (FEGenericBase<OutputShape>::build(Dim, base_fe_type));
@@ -1553,7 +1578,7 @@ FEGenericBase<OutputType>::compute_proj_constraints (DofConstraints & constraint
   std::vector<dof_id_type> my_dof_indices, neigh_dof_indices;
   std::vector<unsigned int> my_side_dofs, neigh_side_dofs;
 
-  if (cont != C_ZERO)
+  if (cont == C_ONE)
     {
       const std::vector<Point> & ref_face_normals =
         my_fe->get_normals();
@@ -1668,7 +1693,7 @@ FEGenericBase<OutputType>::compute_proj_constraints (DofConstraints & constraint
                   for (unsigned int qp = 0; qp != n_qp; ++qp)
                     {
                       Ke(is,js) += JxW[qp] * TensorTools::inner_product(phi[i][qp], phi[j][qp]);
-                      if (cont != C_ZERO)
+                      if (cont == C_ONE)
                         Ke(is,js) += JxW[qp] *
                           TensorTools::inner_product((*dphi)[i][qp] *
                                                      (*face_normals)[qp],
@@ -1692,7 +1717,7 @@ FEGenericBase<OutputType>::compute_proj_constraints (DofConstraints & constraint
                       Fe(js) += JxW[qp] *
                         TensorTools::inner_product(neigh_phi[i][qp],
                                                    phi[j][qp]);
-                      if (cont != C_ZERO)
+                      if (cont == C_ONE)
                         Fe(js) += JxW[qp] *
                           TensorTools::inner_product((*neigh_dphi)[i][qp] *
                                                      (*face_normals)[qp],
@@ -1816,6 +1841,13 @@ compute_periodic_constraints (DofConstraints & constraints,
   // Only constrain active elements with this method
   if (!elem->active())
     return;
+
+#ifdef LIBMESH_ENABLE_INFINITE_ELEMENTS
+   if (elem->infinite())
+   {
+      libmesh_not_implemented();
+   }
+#endif
 
   const unsigned int Dim = elem->dim();
 

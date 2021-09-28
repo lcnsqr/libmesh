@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -285,6 +285,11 @@ public:
    * Reinitializes the constraints for this system.
    */
   virtual void reinit_constraints ();
+
+  /**
+   * Reinitializes the system with a new mesh.
+   */
+  virtual void reinit_mesh();
 
   /**
    * \returns \p true iff this system has been initialized.

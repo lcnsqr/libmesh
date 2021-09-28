@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -80,10 +80,14 @@ void l2_lagrange_nodal_soln(const Elem * elem,
             }
 
 
+          case TRI7:
+            libmesh_assert_equal_to (nodal_soln.size(), 7);
+            nodal_soln[6] = (elem_soln[0] + elem_soln[1] + elem_soln[2])/3.;
+            libmesh_fallthrough();
           case TRI6:
             {
+              libmesh_assert (type == TRI7 || nodal_soln.size() == 6);
               libmesh_assert_equal_to (elem_soln.size(), 3);
-              libmesh_assert_equal_to (nodal_soln.size(), 6);
 
               nodal_soln[0] = elem_soln[0];
               nodal_soln[1] = elem_soln[1];
@@ -91,7 +95,6 @@ void l2_lagrange_nodal_soln(const Elem * elem,
               nodal_soln[3] = .5*(elem_soln[0] + elem_soln[1]);
               nodal_soln[4] = .5*(elem_soln[1] + elem_soln[2]);
               nodal_soln[5] = .5*(elem_soln[2] + elem_soln[0]);
-
               return;
             }
 
@@ -123,10 +126,17 @@ void l2_lagrange_nodal_soln(const Elem * elem,
             }
 
 
+          case TET14:
+            libmesh_assert_equal_to (nodal_soln.size(), 14);
+            nodal_soln[10] = (elem_soln[0] + elem_soln[1] + elem_soln[2])/3.;
+            nodal_soln[11] = (elem_soln[0] + elem_soln[1] + elem_soln[3])/3.;
+            nodal_soln[12] = (elem_soln[1] + elem_soln[2] + elem_soln[3])/3.;
+            nodal_soln[13] = (elem_soln[0] + elem_soln[2] + elem_soln[3])/3.;
+            libmesh_fallthrough();
           case TET10:
             {
               libmesh_assert_equal_to (elem_soln.size(), 4);
-              libmesh_assert_equal_to (nodal_soln.size(), 10);
+              libmesh_assert (type == TET14 || nodal_soln.size() == 10);
 
               nodal_soln[0] = elem_soln[0];
               nodal_soln[1] = elem_soln[1];
@@ -259,11 +269,48 @@ void l2_lagrange_nodal_soln(const Elem * elem,
               return;
             }
 
+          case TRI7:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 6);
+              libmesh_assert_equal_to (nodal_soln.size(), 7);
+
+              for (int i=0; i != 6; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              nodal_soln[6] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[2])
+                              +4./9. * (elem_soln[3] + elem_soln[4] + elem_soln[5]);
+
+              return;
+            }
+
+          case TET14:
+            {
+              libmesh_assert_equal_to (elem_soln.size(), 10);
+              libmesh_assert_equal_to (nodal_soln.size(), 14);
+
+              for (int i=0; i != 10; ++i)
+                nodal_soln[i] = elem_soln[i];
+
+              nodal_soln[10] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[2])
+                               +4./9. * (elem_soln[4] + elem_soln[5] + elem_soln[6]);
+              nodal_soln[11] = -1./9. * (elem_soln[0] + elem_soln[1] + elem_soln[3])
+                               +4./9. * (elem_soln[4] + elem_soln[7] + elem_soln[8]);
+              nodal_soln[12] = -1./9. * (elem_soln[1] + elem_soln[2] + elem_soln[3])
+                               +4./9. * (elem_soln[5] + elem_soln[8] + elem_soln[9]);
+              nodal_soln[13] = -1./9. * (elem_soln[0] + elem_soln[2] + elem_soln[3])
+                               +4./9. * (elem_soln[6] + elem_soln[7] + elem_soln[9]);
+
+              return;
+            }
+
+
           default:
             {
               // By default the element solution _is_ nodal,
-              // so just copy it.
-              nodal_soln = elem_soln;
+              // so just copy the portion relevant to the nodal solution
+              libmesh_assert_less_equal(nodal_soln.size(), elem_soln.size());
+              for (const auto i : index_range(nodal_soln))
+                nodal_soln[i] = elem_soln[i];
 
               return;
             }
@@ -276,8 +323,10 @@ void l2_lagrange_nodal_soln(const Elem * elem,
     default:
       {
         // By default the element solution _is_ nodal,
-        // so just copy it.
-        nodal_soln = elem_soln;
+        // so just copy the portion relevant to the nodal solution
+        libmesh_assert_less_equal(nodal_soln.size(), elem_soln.size());
+        for (const auto i : index_range(nodal_soln))
+          nodal_soln[i] = elem_soln[i];
 
         return;
       }
@@ -285,8 +334,6 @@ void l2_lagrange_nodal_soln(const Elem * elem,
 }
 
 
-// TODO: We should make this work, for example, for SECOND on a TRI3
-// (this is valid with L2_LAGRANGE, but not with LAGRANGE)
 unsigned int l2_lagrange_n_dofs(const ElemType t, const Order o)
 {
   switch (o)
@@ -308,6 +355,7 @@ unsigned int l2_lagrange_n_dofs(const ElemType t, const Order o)
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
             return 3;
 
           case QUAD4:
@@ -319,6 +367,7 @@ unsigned int l2_lagrange_n_dofs(const ElemType t, const Order o)
 
           case TET4:
           case TET10:
+          case TET14:
             return 4;
 
           case HEX8:
@@ -353,37 +402,46 @@ unsigned int l2_lagrange_n_dofs(const ElemType t, const Order o)
           case NODEELEM:
             return 1;
 
+          case EDGE2:
           case EDGE3:
             return 3;
 
+          case TRI3:
           case TRI6:
+          case TRI7:
             return 6;
 
           case QUAD8:
           case QUADSHELL8:
             return 8;
 
+          case QUAD4:
           case QUAD9:
             return 9;
 
+          case TET4:
           case TET10:
+          case TET14:
             return 10;
 
           case HEX20:
             return 20;
 
+          case HEX8:
           case HEX27:
             return 27;
 
           case PRISM15:
             return 15;
 
+          case PRISM6:
           case PRISM18:
             return 18;
 
           case PYRAMID13:
             return 13;
 
+          case PYRAMID5:
           case PYRAMID14:
             return 14;
 
@@ -402,8 +460,16 @@ unsigned int l2_lagrange_n_dofs(const ElemType t, const Order o)
           case NODEELEM:
             return 1;
 
+          case EDGE2:
+          case EDGE3:
           case EDGE4:
             return 4;
+
+          case TRI7:
+            return 7;
+
+          case TET14:
+            return 14;
 
           case INVALID_ELEM:
             return 0;

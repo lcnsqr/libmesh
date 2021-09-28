@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -21,11 +21,12 @@
 #include "libmesh/boundary_info.h"
 #include "libmesh/elem.h"
 #include "libmesh/libmesh_logging.h"
-#include "libmesh/metis_partitioner.h"
+#include "libmesh/partitioner.h"
 #include "libmesh/replicated_mesh.h"
 #include "libmesh/utility.h"
 #include "libmesh/parallel.h"
 #include "libmesh/point.h"
+#include "libmesh/string_to_enum.h"
 #ifdef LIBMESH_HAVE_NANOFLANN
 #include "libmesh/nanoflann.hpp"
 #endif
@@ -92,7 +93,13 @@ ReplicatedMesh::ReplicatedMesh (const Parallel::Communicator & comm_in,
   // here in the constructor.
   _next_unique_id = 0;
 #endif
-  _partitioner = libmesh_make_unique<MetisPartitioner>();
+
+  const std::string default_partitioner = "metis";
+  const std::string my_partitioner =
+    libMesh::command_line_value("--default-partitioner",
+                                default_partitioner);
+  _partitioner = Partitioner::build
+    (Utility::string_to_enum<PartitionerType>(my_partitioner));
 }
 
 
@@ -171,6 +178,40 @@ ReplicatedMesh::ReplicatedMesh (const UnstructuredMesh & other_mesh) :
   for (const auto & node_bnd_id : node_boundaries)
     this_boundary_info.nodeset_name(node_bnd_id) =
       other_boundary_info.get_nodeset_name(node_bnd_id);
+}
+
+ReplicatedMesh & ReplicatedMesh::operator= (ReplicatedMesh && other_mesh)
+{
+  // Move assign as an UnstructuredMesh
+  this->UnstructuredMesh::operator=(std::move(other_mesh));
+
+  // Nodes and elements belong to ReplicatedMesh and have to be
+  // moved before we can move arbitrary GhostingFunctor, Partitioner,
+  // etc. subclasses.
+  this->move_nodes_and_elements(std::move(other_mesh));
+
+  // Handle those remaining moves.
+  this->post_dofobject_moves(std::move(other_mesh));
+
+  return *this;
+}
+
+MeshBase & ReplicatedMesh::assign(MeshBase && other_mesh)
+{
+  *this = std::move(cast_ref<ReplicatedMesh&>(other_mesh));
+
+  return *this;
+}
+
+void ReplicatedMesh::move_nodes_and_elements(MeshBase && other_meshbase)
+{
+  ReplicatedMesh & other_mesh = cast_ref<ReplicatedMesh&>(other_meshbase);
+
+  this->_nodes = std::move(other_mesh._nodes);
+  this->_n_nodes = other_mesh.n_nodes();
+
+  this->_elements = std::move(other_mesh._elements);
+  this->_n_elem = other_mesh.n_elem();
 }
 
 
@@ -1319,6 +1360,17 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
                                std::get<1>(t),
                                std::get<2>(t));
 
+      const auto & other_ns_id_to_name = other_boundary.get_nodeset_name_map();
+      auto & ns_id_to_name = boundary.set_nodeset_name_map();
+      ns_id_to_name.insert(other_ns_id_to_name.begin(), other_ns_id_to_name.end());
+
+      const auto & other_ss_id_to_name = other_boundary.get_sideset_name_map();
+      auto & ss_id_to_name = boundary.set_sideset_name_map();
+      ss_id_to_name.insert(other_ss_id_to_name.begin(), other_ss_id_to_name.end());
+
+      const auto & other_es_id_to_name = other_boundary.get_edgeset_name_map();
+      auto & es_id_to_name = boundary.set_edgeset_name_map();
+      es_id_to_name.insert(other_es_id_to_name.begin(), other_es_id_to_name.end());
     } // end if (other_mesh)
 
   // Finally, we need to "merge" the overlapping nodes
@@ -1488,26 +1540,8 @@ void ReplicatedMesh::stitching_helper (const ReplicatedMesh * other_mesh,
     {
       LOG_SCOPE("stitch_meshes clear bcids", "ReplicatedMesh");
 
-      // Container to catch boundary IDs passed back from BoundaryInfo.
-      std::vector<boundary_id_type> bc_ids;
-
-      for (auto & el : element_ptr_range())
-        for (auto side_id : el->side_index_range())
-          if (el->neighbor_ptr(side_id) != nullptr)
-            {
-              // Completely remove the side from the boundary_info object if it has either
-              // this_mesh_boundary_id or other_mesh_boundary_id.
-              this->get_boundary_info().boundary_ids (el, side_id, bc_ids);
-
-              if (std::find(bc_ids.begin(), bc_ids.end(), this_mesh_boundary_id) != bc_ids.end() ||
-                  std::find(bc_ids.begin(), bc_ids.end(), other_mesh_boundary_id) != bc_ids.end())
-                this->get_boundary_info().remove_side(el, side_id);
-            }
-
-      // Removing stitched-away boundary ids might have removed an id
-      // *entirely*, so we need to recompute boundary id sets to check
-      // for that.
-      this->get_boundary_info().regenerate_id_sets();
+      this->get_boundary_info().clear_stitched_boundary_side_ids(
+          this_mesh_boundary_id, other_mesh_boundary_id, /*clear_nodeset_data=*/true);
     }
 }
 

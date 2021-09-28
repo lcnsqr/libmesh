@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -45,7 +45,7 @@ const unsigned int Tri6::side_nodes_map[Tri6::num_sides][Tri6::nodes_per_side] =
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tri6::_embedding_matrix[Tri6::num_children][Tri6::num_nodes][Tri6::num_nodes] =
+const Real Tri6::_embedding_matrix[Tri6::num_children][Tri6::num_nodes][Tri6::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -143,14 +143,17 @@ Tri6::nodes_on_edge(const unsigned int e) const
 bool Tri6::has_affine_map() const
 {
   // Make sure edges are straight
-  if (!this->point(3).relative_fuzzy_equals
-      ((this->point(0) + this->point(1))/2.))
+  Point v = this->point(1) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(3) - this->point(0))*2, affine_tol))
     return false;
-  if (!this->point(4).relative_fuzzy_equals
-      ((this->point(1) + this->point(2))/2.))
+  v = this->point(2) - this->point(1);
+  if (!v.relative_fuzzy_equals
+      ((this->point(4) - this->point(1))*2, affine_tol))
     return false;
-  if (!this->point(5).relative_fuzzy_equals
-      ((this->point(2) + this->point(0))/2.))
+  v = this->point(2) - this->point(0);
+  if (!v.relative_fuzzy_equals
+      ((this->point(5) - this->point(0))*2, affine_tol))
     return false;
 
   return true;
@@ -470,5 +473,25 @@ const unsigned short int Tri6::_second_order_vertex_child_index[Tri6::num_nodes]
     99,99,99, // Vertices
     1,2,2     // Edges
   };
+
+
+void Tri6::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 3);
+
+  for (unsigned int i = 0; i != perm_num; ++i)
+    {
+      swap3nodes(0,1,2);
+      swap3nodes(3,4,5);
+    }
+}
+
+
+unsigned int Tri6::center_node_on_side(const unsigned short side) const
+{
+  libmesh_assert_less (side, Tri6::num_sides);
+  return side + 3;
+}
+
 
 } // namespace libMesh

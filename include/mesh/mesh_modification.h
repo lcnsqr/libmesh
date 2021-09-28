@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -53,6 +53,20 @@ namespace Modification
  */
 void distort (MeshBase & mesh,
               const Real factor, const bool perturb_boundary=false);
+
+/**
+ * Randomly permute the nodal ordering of each element (without
+ * twisting the element mapping.  This is useful for regression
+ * testing with a variety of element orientations.
+ *
+ * This function does not currently handle meshes with any element
+ * refinement.
+ *
+ * This function does not currently permute BoundaryInfo data
+ * associated with element sides, which will likely be scrambled by
+ * the permutation.
+ */
+void permute_elements (MeshBase & mesh);
 
 /**
  * Deterministically perturb the nodal locations.  This function will

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,7 @@
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/fe_lagrange_shape_1D.h"
-
+#include "libmesh/enum_to_string.h"
 
 // Anonymous namespace for functions shared by LAGRANGE and
 // L2_LAGRANGE implementations. Implementations appear at the bottom
@@ -29,11 +29,13 @@ namespace
 {
 using namespace libMesh;
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape(const ElemType,
                           const Order order,
                           const unsigned int i,
                           const Point & p);
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape_deriv(const ElemType type,
                                 const Order order,
                                 const unsigned int i,
@@ -42,6 +44,7 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
                                        const Order order,
                                        const unsigned int i,
@@ -68,7 +71,7 @@ Real FE<2,LAGRANGE>::shape(const ElemType type,
                            const unsigned int i,
                            const Point & p)
 {
-  return fe_lagrange_2D_shape(type, order, i, p);
+  return fe_lagrange_2D_shape<LAGRANGE>(type, order, i, p);
 }
 
 
@@ -79,7 +82,7 @@ Real FE<2,L2_LAGRANGE>::shape(const ElemType type,
                               const unsigned int i,
                               const Point & p)
 {
-  return fe_lagrange_2D_shape(type, order, i, p);
+  return fe_lagrange_2D_shape<L2_LAGRANGE>(type, order, i, p);
 }
 
 
@@ -93,7 +96,7 @@ Real FE<2,LAGRANGE>::shape(const Elem * elem,
   libmesh_assert(elem);
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, p);
+  return fe_lagrange_2D_shape<LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, p);
 }
 
 
@@ -108,7 +111,7 @@ Real FE<2,L2_LAGRANGE>::shape(const Elem * elem,
   libmesh_assert(elem);
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, p);
+  return fe_lagrange_2D_shape<L2_LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, p);
 }
 
 
@@ -120,7 +123,7 @@ Real FE<2,LAGRANGE>::shape(const FEType fet,
                            const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, p);
+  return fe_lagrange_2D_shape<LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, p);
 }
 
 
@@ -133,7 +136,7 @@ Real FE<2,L2_LAGRANGE>::shape(const FEType fet,
                               const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, p);
+  return fe_lagrange_2D_shape<L2_LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, p);
 }
 
 
@@ -144,7 +147,7 @@ Real FE<2,LAGRANGE>::shape_deriv(const ElemType type,
                                  const unsigned int j,
                                  const Point & p)
 {
-  return fe_lagrange_2D_shape_deriv(type, order, i, j, p);
+  return fe_lagrange_2D_shape_deriv<LAGRANGE>(type, order, i, j, p);
 }
 
 
@@ -156,7 +159,7 @@ Real FE<2,L2_LAGRANGE>::shape_deriv(const ElemType type,
                                     const unsigned int j,
                                     const Point & p)
 {
-  return fe_lagrange_2D_shape_deriv(type, order, i, j, p);
+  return fe_lagrange_2D_shape_deriv<L2_LAGRANGE>(type, order, i, j, p);
 }
 
 
@@ -172,7 +175,7 @@ Real FE<2,LAGRANGE>::shape_deriv(const Elem * elem,
   libmesh_assert(elem);
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape_deriv(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_deriv<LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -189,7 +192,7 @@ Real FE<2,L2_LAGRANGE>::shape_deriv(const Elem * elem,
 
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape_deriv(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_deriv<L2_LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -202,7 +205,7 @@ Real FE<2,LAGRANGE>::shape_deriv(const FEType fet,
                                  const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape_deriv(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_deriv<LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -216,7 +219,7 @@ Real FE<2,L2_LAGRANGE>::shape_deriv(const FEType fet,
                                     const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape_deriv(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_deriv<L2_LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -230,7 +233,7 @@ Real FE<2,LAGRANGE>::shape_second_deriv(const ElemType type,
                                         const unsigned int j,
                                         const Point & p)
 {
-  return fe_lagrange_2D_shape_second_deriv(type, order, i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<LAGRANGE>(type, order, i, j, p);
 }
 
 
@@ -242,7 +245,7 @@ Real FE<2,L2_LAGRANGE>::shape_second_deriv(const ElemType type,
                                            const unsigned int j,
                                            const Point & p)
 {
-  return fe_lagrange_2D_shape_second_deriv(type, order, i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<L2_LAGRANGE>(type, order, i, j, p);
 }
 
 
@@ -258,7 +261,7 @@ Real FE<2,LAGRANGE>::shape_second_deriv(const Elem * elem,
   libmesh_assert(elem);
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape_second_deriv(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -274,7 +277,7 @@ Real FE<2,L2_LAGRANGE>::shape_second_deriv(const Elem * elem,
   libmesh_assert(elem);
 
   // call the orientation-independent shape functions
-  return fe_lagrange_2D_shape_second_deriv(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<L2_LAGRANGE>(elem->type(), static_cast<Order>(order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -287,7 +290,7 @@ Real FE<2,LAGRANGE>::shape_second_deriv(const FEType fet,
                                         const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape_second_deriv(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
 }
 
 
@@ -301,7 +304,7 @@ Real FE<2,L2_LAGRANGE>::shape_second_deriv(const FEType fet,
                                            const bool add_p_level)
 {
   libmesh_assert(elem);
-  return fe_lagrange_2D_shape_second_deriv(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
+  return fe_lagrange_2D_shape_second_deriv<L2_LAGRANGE>(elem->type(), static_cast<Order>(fet.order + add_p_level * elem->p_level()), i, j, p);
 }
 
 #endif // LIBMESH_ENABLE_SECOND_DERIVATIVES
@@ -316,6 +319,7 @@ namespace
 {
 using namespace libMesh;
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape(const ElemType type,
                           const Order order,
                           const unsigned int i,
@@ -353,6 +357,7 @@ Real fe_lagrange_2D_shape(const ElemType type,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
             {
               const Real zeta1 = p(0);
               const Real zeta2 = p(1);
@@ -377,7 +382,7 @@ Real fe_lagrange_2D_shape(const ElemType type,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
           }
       }
 
@@ -426,8 +431,13 @@ Real fe_lagrange_2D_shape(const ElemType type,
                 }
             }
 
+          case QUAD4:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case QUAD9:
             {
+
               // Compute quad shape functions as a tensor-product
               const Real xi  = p(0);
               const Real eta = p(1);
@@ -442,7 +452,12 @@ Real fe_lagrange_2D_shape(const ElemType type,
                       fe_lagrange_1D_quadratic_shape(i1[i], eta));
             }
 
+          case TRI3:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case TRI6:
+          case TRI7:
             {
               const Real zeta1 = p(0);
               const Real zeta2 = p(1);
@@ -476,9 +491,58 @@ Real fe_lagrange_2D_shape(const ElemType type,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
           }
       }
+
+
+
+      // "cubic" (one cubic bubble) Lagrange shape functions on TRI7
+    case THIRD:
+      {
+        switch (type)
+          {
+          case TRI7:
+            {
+              const Real zeta1 = p(0);
+              const Real zeta2 = p(1);
+              const Real zeta0 = 1. - zeta1 - zeta2;
+              const Real bubble_27th = zeta0*zeta1*zeta2;
+
+              libmesh_assert_less (i, 7);
+
+              switch(i)
+                {
+                case 0:
+                  return 2.*zeta0*(zeta0-0.5) + 3.*bubble_27th;
+
+                case 1:
+                  return 2.*zeta1*(zeta1-0.5) + 3.*bubble_27th;
+
+                case 2:
+                  return 2.*zeta2*(zeta2-0.5) + 3.*bubble_27th;
+
+                case 3:
+                  return 4.*zeta0*zeta1 - 12.*bubble_27th;
+
+                case 4:
+                  return 4.*zeta1*zeta2 - 12.*bubble_27th;
+
+                case 5:
+                  return 4.*zeta2*zeta0 - 12.*bubble_27th;
+
+                case 6:
+                  return 27.*bubble_27th;
+
+                default:
+                  libmesh_error_msg("Invalid shape function index i = " << i);
+                }
+            }
+
+          default:
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
+          }
+      } // end case THIRD
 
 
 
@@ -494,6 +558,7 @@ Real fe_lagrange_2D_shape(const ElemType type,
 
 
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape_deriv(const ElemType type,
                                 const Order order,
                                 const unsigned int i,
@@ -547,6 +612,7 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 3);
 
@@ -602,7 +668,7 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
           }
       }
 
@@ -699,6 +765,10 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
                 }
             }
 
+          case QUAD4:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case QUAD9:
             {
               // Compute quad shape functions as a tensor-product
@@ -728,7 +798,12 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
                 }
             }
 
+          case TRI3:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 6);
 
@@ -805,9 +880,108 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
           }
       }
+
+
+
+      // "cubic" (one cubic bubble) Lagrange shape functions on TRI7
+    case THIRD:
+      {
+        switch (type)
+          {
+          case TRI7:
+            {
+              libmesh_assert_less (i, 7);
+
+              const Real zeta1 = p(0);
+              const Real zeta2 = p(1);
+              const Real zeta0 = 1. - zeta1 - zeta2;
+              // const Real bubble_27th = zeta0*zeta1*zeta2;
+
+              const Real dzeta0dxi  = -1.;
+              const Real dzeta1dxi  = 1.;
+              const Real dzeta2dxi  = 0.;
+              const Real dbubbledxi = zeta2 * (1. - 2.*zeta1 - zeta2);
+
+              const Real dzeta0deta = -1.;
+              const Real dzeta1deta = 0.;
+              const Real dzeta2deta = 1.;
+              const Real dbubbledeta= zeta1 * (1. - zeta1 - 2.*zeta2);
+
+              switch(j)
+                {
+                case 0:
+                  {
+                    switch(i)
+                      {
+                      case 0:
+                        return (4.*zeta0-1.)*dzeta0dxi + 3.*dbubbledxi;
+
+                      case 1:
+                        return (4.*zeta1-1.)*dzeta1dxi + 3.*dbubbledxi;
+
+                      case 2:
+                        return (4.*zeta2-1.)*dzeta2dxi + 3.*dbubbledxi;
+
+                      case 3:
+                        return 4.*zeta1*dzeta0dxi + 4.*zeta0*dzeta1dxi - 12.*dbubbledxi;
+
+                      case 4:
+                        return 4.*zeta2*dzeta1dxi + 4.*zeta1*dzeta2dxi - 12.*dbubbledxi;
+
+                      case 5:
+                        return 4.*zeta2*dzeta0dxi + 4*zeta0*dzeta2dxi - 12.*dbubbledxi;
+
+                      case 6:
+                        return 27.*dbubbledxi;
+
+                      default:
+                        libmesh_error_msg("Invalid shape function index i = " << i);
+                      }
+                  }
+
+                case 1:
+                  {
+                    switch(i)
+                      {
+                      case 0:
+                        return (4.*zeta0-1.)*dzeta0deta + 3.*dbubbledeta;
+
+                      case 1:
+                        return (4.*zeta1-1.)*dzeta1deta + 3.*dbubbledeta;
+
+                      case 2:
+                        return (4.*zeta2-1.)*dzeta2deta + 3.*dbubbledeta;
+
+                      case 3:
+                        return 4.*zeta1*dzeta0deta + 4.*zeta0*dzeta1deta - 12.*dbubbledeta;
+
+                      case 4:
+                        return 4.*zeta2*dzeta1deta + 4.*zeta1*dzeta2deta - 12.*dbubbledeta;
+
+                      case 5:
+                        return 4.*zeta2*dzeta0deta + 4*zeta0*dzeta2deta - 12.*dbubbledeta;
+
+                      case 6:
+                        return 27.*dbubbledeta;
+
+                      default:
+                        libmesh_error_msg("Invalid shape function index i = " << i);
+                      }
+                  }
+                default:
+                  libmesh_error_msg("ERROR: Invalid derivative index j = " << j);
+                }
+            }
+
+          default:
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
+          }
+      } // end case THIRD
+
+
 
       // unsupported order
     default:
@@ -823,6 +997,7 @@ Real fe_lagrange_2D_shape_deriv(const ElemType type,
 
 #ifdef LIBMESH_ENABLE_SECOND_DERIVATIVES
 
+template <FEFamily T>
 Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
                                        const Order order,
                                        const unsigned int i,
@@ -882,13 +1057,14 @@ Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
           case TRI3:
           case TRISHELL3:
           case TRI6:
+          case TRI7:
             {
               // All second derivatives for linear triangles are zero.
               return 0.;
             }
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
 
           } // end switch (type)
       } // end case FIRST
@@ -1004,6 +1180,10 @@ Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
                 } // end switch (j)
             } // end case QUAD8
 
+          case QUAD4:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case QUAD9:
             {
               // Compute QUAD9 second derivatives as tensor product
@@ -1038,7 +1218,12 @@ Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
                 }  // end switch (j)
             } // end case QUAD9
 
+          case TRI3:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
           case TRI6:
+          case TRI7:
             {
               const Real dzeta0dxi  = -1.;
               const Real dzeta1dxi  = 1.;
@@ -1139,14 +1324,151 @@ Real fe_lagrange_2D_shape_second_deriv(const ElemType type,
                 default:
                   libmesh_error_msg("ERROR: Invalid derivative index j = " << j);
                 } // end switch (j)
-            }  // end case TRI6
+            }  // end case TRI6+TRI7
 
           default:
-            libmesh_error_msg("ERROR: Unsupported 2D element type: " << type);
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
           }
       } // end case SECOND
 
 
+
+      // "cubic" (one cubic bubble) Lagrange shape functions on TRI7
+    case THIRD:
+      {
+        switch (type)
+          {
+          case TRI3:
+            libmesh_assert_msg(T == L2_LAGRANGE,
+                               "High order on first order elements only supported for L2 families");
+            libmesh_fallthrough();
+          case TRI6:
+          case TRI7:
+            {
+              const Real zeta1 = p(0);
+              const Real zeta2 = p(1);
+              // const Real zeta0 = 1. - zeta1 - zeta2;
+
+              const Real dzeta0dxi  = -1.;
+              const Real dzeta1dxi  = 1.;
+              const Real dzeta2dxi  = 0.;
+              // const Real dbubbledxi = zeta2 * (1. - 2.*zeta1 - zeta2);
+              const Real d2bubbledxi2 = -2. * zeta2;
+
+              const Real dzeta0deta = -1.;
+              const Real dzeta1deta = 0.;
+              const Real dzeta2deta = 1.;
+              // const Real dbubbledeta= zeta1 * (1. - zeta1 - 2.*zeta2);
+              const Real d2bubbledeta2 = -2. * zeta1;
+
+              const Real d2bubbledxideta = (1. - 2.*zeta1 - 2.*zeta2);
+
+              libmesh_assert_less (j, 3);
+
+              switch (j)
+                {
+                  // d^2() / dxi^2
+                case 0:
+                  {
+                    switch (i)
+                      {
+                      case 0:
+                        return 4.*dzeta0dxi*dzeta0dxi + 3.*d2bubbledxi2;
+
+                      case 1:
+                        return 4.*dzeta1dxi*dzeta1dxi + 3.*d2bubbledxi2;
+
+                      case 2:
+                        return 4.*dzeta2dxi*dzeta2dxi + 3.*d2bubbledxi2;
+
+                      case 3:
+                        return 8.*dzeta0dxi*dzeta1dxi - 12.*d2bubbledxi2;
+
+                      case 4:
+                        return 8.*dzeta1dxi*dzeta2dxi - 12.*d2bubbledxi2;
+
+                      case 5:
+                        return 8.*dzeta0dxi*dzeta2dxi - 12.*d2bubbledxi2;
+
+                      case 6:
+                        return 27.*d2bubbledxi2;
+
+                      default:
+                        libmesh_error_msg("Invalid shape function index i = " << i);
+                      }
+                  }
+
+                  // d^2() / dxi deta
+                case 1:
+                  {
+                    switch (i)
+                      {
+                      case 0:
+                        return 4.*dzeta0dxi*dzeta0deta + 3.*d2bubbledxideta;
+
+                      case 1:
+                        return 4.*dzeta1dxi*dzeta1deta + 3.*d2bubbledxideta;
+
+                      case 2:
+                        return 4.*dzeta2dxi*dzeta2deta + 3.*d2bubbledxideta;
+
+                      case 3:
+                        return 4.*dzeta1deta*dzeta0dxi + 4.*dzeta0deta*dzeta1dxi - 12.*d2bubbledxideta;
+
+                      case 4:
+                        return 4.*dzeta2deta*dzeta1dxi + 4.*dzeta1deta*dzeta2dxi - 12.*d2bubbledxideta;
+
+                      case 5:
+                        return 4.*dzeta2deta*dzeta0dxi + 4.*dzeta0deta*dzeta2dxi - 12.*d2bubbledxideta;
+
+                      case 6:
+                        return 27.*d2bubbledxideta;
+
+                      default:
+                        libmesh_error_msg("Invalid shape function index i = " << i);
+                      }
+                  }
+
+                  // d^2() / deta^2
+                case 2:
+                  {
+                    switch (i)
+                      {
+                      case 0:
+                        return 4.*dzeta0deta*dzeta0deta + 3.*d2bubbledeta2;
+
+                      case 1:
+                        return 4.*dzeta1deta*dzeta1deta + 3.*d2bubbledeta2;
+
+                      case 2:
+                        return 4.*dzeta2deta*dzeta2deta + 3.*d2bubbledeta2;
+
+                      case 3:
+                        return 8.*dzeta0deta*dzeta1deta - 12.*d2bubbledeta2;
+
+                      case 4:
+                        return 8.*dzeta1deta*dzeta2deta - 12.*d2bubbledeta2;
+
+                      case 5:
+                        return 8.*dzeta0deta*dzeta2deta - 12.*d2bubbledeta2;
+
+                      case 6:
+                        return 27.*d2bubbledeta2;
+
+                      default:
+                        libmesh_error_msg("Invalid shape function index i = " << i);
+                      }
+                  }
+
+                default:
+                  libmesh_error_msg("ERROR: Invalid derivative index j = " << j);
+                } // end switch (j)
+            }  // end case TRI6+TRI7
+
+          default:
+            libmesh_error_msg("ERROR: Unsupported 2D element type: " << Utility::enum_to_string(type));
+          }
+      } // end case THIRD
 
       // unsupported order
     default:

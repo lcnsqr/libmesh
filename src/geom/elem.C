@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,7 @@
 #include "libmesh/face_tri3_subdivision.h"
 #include "libmesh/face_tri3_shell.h"
 #include "libmesh/face_tri6.h"
+#include "libmesh/face_tri7.h"
 #include "libmesh/face_quad4.h"
 #include "libmesh/face_quad4_shell.h"
 #include "libmesh/face_quad8.h"
@@ -48,6 +49,7 @@
 #include "libmesh/face_inf_quad6.h"
 #include "libmesh/cell_tet4.h"
 #include "libmesh/cell_tet10.h"
+#include "libmesh/cell_tet14.h"
 #include "libmesh/cell_hex8.h"
 #include "libmesh/cell_hex20.h"
 #include "libmesh/cell_hex27.h"
@@ -64,6 +66,7 @@
 #include "libmesh/cell_pyramid14.h"
 #include "libmesh/fe_base.h"
 #include "libmesh/mesh_base.h"
+#include "libmesh/quadrature_nodal.h"
 #include "libmesh/quadrature_gauss.h"
 #include "libmesh/remote_elem.h"
 #include "libmesh/reference_elem.h"
@@ -129,7 +132,7 @@ const unsigned int Elem::type_to_n_nodes_map [] =
     18, // INFHEX18
 
     6,  // INFPRISM6
-    16, // INFPRISM12
+    12, // INFPRISM12
 
     1,  // NODEELEM
 
@@ -139,6 +142,11 @@ const unsigned int Elem::type_to_n_nodes_map [] =
     3,  // TRISHELL3
     4,  // QUADSHELL4
     8,  // QUADSHELL8
+
+    7,  // TRI7
+    14, // TET14
+    20, // PRISM20
+    18, // PYRAMID18
   };
 
 const unsigned int Elem::type_to_n_sides_map [] =
@@ -189,6 +197,11 @@ const unsigned int Elem::type_to_n_sides_map [] =
     3,  // TRISHELL3
     4,  // QUADSHELL4
     4,  // QUADSHELL8
+
+    3,  // TRI7
+    4,  // TET14
+    5,  // PRISM20
+    5,  // PYRAMID18
   };
 
 const unsigned int Elem::type_to_n_edges_map [] =
@@ -239,6 +252,11 @@ const unsigned int Elem::type_to_n_edges_map [] =
     3,  // TRISHELL3
     4,  // QUADSHELL4
     4,  // QUADSHELL8
+
+    3,  // TRI7
+    6,  // TET14
+    9,  // PRISM20
+    8,  // PYRAMID18
   };
 
 // ------------------------------------------------------------
@@ -269,6 +287,8 @@ std::unique_ptr<Elem> Elem::build(const ElemType type,
       return libmesh_make_unique<Tri3Subdivision>(p);
     case TRI6:
       return libmesh_make_unique<Tri6>(p);
+    case TRI7:
+      return libmesh_make_unique<Tri7>(p);
     case QUAD4:
       return libmesh_make_unique<Quad4>(p);
     case QUADSHELL4:
@@ -285,6 +305,8 @@ std::unique_ptr<Elem> Elem::build(const ElemType type,
       return libmesh_make_unique<Tet4>(p);
     case TET10:
       return libmesh_make_unique<Tet10>(p);
+    case TET14:
+      return libmesh_make_unique<Tet14>(p);
     case HEX8:
       return libmesh_make_unique<Hex8>(p);
     case HEX20:
@@ -329,7 +351,7 @@ std::unique_ptr<Elem> Elem::build(const ElemType type,
 #endif
 
     default:
-      libmesh_error_msg("ERROR: Undefined element type!");
+      libmesh_error_msg("ERROR: Undefined element type == " << Utility::enum_to_string(type));
     }
 }
 
@@ -355,6 +377,110 @@ const Elem * Elem::reference_elem () const
 
 
 Point Elem::centroid() const
+{
+  libmesh_do_once(libMesh::err
+                  << "Elem::centroid() has been deprecated. Replace with either "
+                  << "Elem::vertex_average() to maintain existing behavior, or "
+                  << "the more expensive Elem::true_centroid() "
+                  << "in cases where the true 'geometric' centroid is required."
+                  << std::endl);
+  libmesh_deprecated();
+
+  return Elem::vertex_average();
+}
+
+Point Elem::true_centroid() const
+{
+  // The base class implementation builds a finite element of the correct
+  // order and computes the centroid, c=(cx, cy, cz), where:
+  //
+  // [cx]            [\int x dV]
+  // [cy] := (1/V) * [\int y dV]
+  // [cz]            [\int z dV]
+  //
+  // using quadrature. Note that we can expand "x" in the FE space as:
+  //
+  // x = \sum_i x_i \phi_i
+  //
+  // where x_i are the nodal positions of the element and \phi_i are the
+  // associated Lagrange shape functions. This allows us to write the
+  // integrals above as e.g.:
+  //
+  // \int x dV = \sum_i x_i \int \phi_i dV
+  //
+  // Defining:
+  //
+  // V_i := \int \phi_i dV
+  //
+  // we then have:
+  //
+  // [cx]           [\sum_i x_i V_i]
+  // [cy] = (1/V) * [\sum_i y_i V_i]
+  // [cz]           [\sum_i z_i V_i]
+  //
+  // where:
+  // V = \sum_i V_i
+  //
+  // Derived element types can overload this method to compute
+  // the centroid more efficiently when possible.
+
+  // If this Elem has an elevated p_level, then we need to generate a
+  // barebones copy of it with zero p_level and call true_centroid()
+  // on that instead.  This workaround allows us to avoid issues with
+  // calling FE::reinit() with a default_order() FEType, and then
+  // having that order incorrectly boosted by p_level.
+  if (_p_level)
+    {
+      auto elem_copy = Elem::build(this->type());
+
+      // Set node pointers
+      for (auto n : this->node_index_range())
+        elem_copy->set_node(n) = _nodes[n];
+
+      return elem_copy->true_centroid();
+    }
+
+  const FEFamily mapping_family = FEMap::map_fe_type(*this);
+  const FEType fe_type(this->default_order(), mapping_family);
+
+  // Build FE and attach quadrature rule.  The default quadrature rule
+  // integrates the mass matrix exactly, thus it is overkill to
+  // integrate the basis functions, but this is convenient.
+  std::unique_ptr<FEBase> fe = FEBase::build(this->dim(), fe_type);
+  QGauss qrule (this->dim(), fe_type.default_quadrature_order());
+  fe->attach_quadrature_rule(&qrule);
+
+  // Pre-request required data
+  const auto & JxW = fe->get_JxW();
+  const auto & phi = fe->get_phi();
+
+  // Re-compute element-specific values
+  fe->reinit(this);
+
+  // Number of basis functions
+  auto N = phi.size();
+  libmesh_assert_equal_to(N, this->n_nodes());
+
+  // Compute V_i
+  std::vector<Real> V(N);
+  for (auto qp : index_range(JxW))
+    for (auto i : make_range(N))
+      V[i] += JxW[qp] * phi[i][qp];
+
+  // Compute centroid
+  Point cp;
+  Real vol = 0.;
+
+  for (auto i : make_range(N))
+    {
+      cp += this->point(i) * V[i];
+      vol += V[i];
+    }
+
+  return cp / vol;
+}
+
+Point Elem::vertex_average() const
 {
   Point cp;
 
@@ -546,10 +672,37 @@ unsigned int Elem::which_node_am_i(unsigned int side,
 
 
 
-bool Elem::contains_vertex_of(const Elem * e) const
+bool Elem::contains_vertex_of(const Elem * e, bool mesh_connection) const
 {
   // Our vertices are the first numbered nodes
-  for (auto n : make_range(e->n_vertices()))
+  const unsigned int nv = e->n_vertices();
+  const unsigned int my_nv = this->n_vertices();
+
+  // Check for vertex-to-vertex containment first; contains_point() is
+  // expensive
+  for (auto n : make_range(nv))
+    {
+      const Node * vertex = e->node_ptr(n);
+      for (auto my_n : make_range(my_nv))
+        if (&this->node_ref(my_n) == vertex)
+          return true;
+    }
+
+  // If e is in our mesh, then we might be done testing
+  if (mesh_connection)
+    {
+      const unsigned int l = this->level();
+      const unsigned int el = e->level();
+
+      if (l >= el)
+        return false;
+
+      // We could also return false for l==el-1 iff we knew we had no
+      // triangular faces, but we don't have an API to check that.
+    }
+
+  // Our vertices are the first numbered nodes
+  for (auto n : make_range(nv))
     if (this->contains_point(e->point(n)))
       return true;
   return false;
@@ -796,6 +949,20 @@ const Elem * Elem::interior_parent () const
   libmesh_assert (!interior_p ||
                   (interior_p == remote_elem) ||
                   (interior_p->dim() > this->dim()));
+
+  // If an element in a multi-dimensional mesh has an interior_parent
+  // link, it should be at our level or coarser, just like a neighbor
+  // link.  Our collect_families() code relies on this, but it might
+  // be tempting for users to manually assign something that breaks
+  // it.
+  //
+  // However, we *also* create temporary side elements, and we don't
+  // bother with creating ancestors for those, so they can be at level
+  // 0 even when they're sides of non-level-0 elements.
+  libmesh_assert (!interior_p ||
+                  (interior_p->level() <= this->level()) ||
+                  (this->level() == 0 &&
+                   this->id() == DofObject::invalid_id));
 
   return interior_p;
 }
@@ -1664,14 +1831,14 @@ void Elem::active_family_tree_by_topological_neighbor (std::vector<Elem *> & fam
 }
 
 
-bool Elem::is_child_on_edge(const unsigned int libmesh_dbg_var(c),
+bool Elem::is_child_on_edge(const unsigned int c,
                             const unsigned int e) const
 {
   libmesh_assert_less (c, this->n_children());
   libmesh_assert_less (e, this->n_edges());
 
   std::unique_ptr<const Elem> my_edge = this->build_edge_ptr(e);
-  std::unique_ptr<const Elem> child_edge = this->build_edge_ptr(e);
+  std::unique_ptr<const Elem> child_edge = this->child_ptr(c)->build_edge_ptr(e);
 
   // We're assuming that an overlapping child edge has the same
   // number and orientation as its parent
@@ -1778,7 +1945,7 @@ unsigned int Elem::as_parent_node (unsigned int child,
             {
               for (signed char n = 0; n != nn; ++n)
                 {
-                  const float em_val = this->embedding_matrix
+                  const Real em_val = this->embedding_matrix
                     (c, cn, n);
                   if (em_val == 1)
                     {
@@ -1907,7 +2074,7 @@ Elem::parent_bracketing_nodes(unsigned int child,
 
                   for (unsigned int pn = 0; pn != nn; ++pn)
                     {
-                      const float em_val =
+                      const Real em_val =
                         this->embedding_matrix(c,n,pn);
 
                       libmesh_assert_not_equal_to (em_val, 1);
@@ -1970,7 +2137,7 @@ Elem::parent_bracketing_nodes(unsigned int child,
                     {
                       for (unsigned int pn = 0; pn != nn; ++pn)
                         {
-                          const float em_val =
+                          const Real em_val =
                             this->embedding_matrix(c,n,pn);
 
                           libmesh_assert_not_equal_to (em_val, 1);
@@ -2241,6 +2408,37 @@ bool Elem::point_test(const Point & p, Real box_tol, Real map_tol) const
 
 
 
+bool Elem::has_invertible_map(Real /*tol*/) const
+{
+  QNodal qnodal {this->dim()};
+  FEMap fe_map;
+  auto & jac = fe_map.get_jacobian();
+
+  qnodal.init(this->type());
+  auto & qp = qnodal.get_points();
+  libmesh_assert_equal_to(qp.size(), this->n_nodes());
+
+  std::vector<Point> one_point(1);
+  std::vector<Real> one_weight(1,1);
+  for (auto i : index_range(qp))
+    {
+      if (this->is_singular_node(i))
+        continue;
+
+      one_point[0] = qp[i];
+
+      fe_map.init_reference_to_physical_map(this->dim(), one_point, this);
+      fe_map.compute_map(this->dim(), one_weight, this, false);
+
+      if (jac[0] <= 0)
+        return false;
+    }
+
+  return true;
+}
+
+
+
 void Elem::print_info (std::ostream & os) const
 {
   os << this->get_info()
@@ -2397,6 +2595,7 @@ ElemType Elem::first_order_equivalent_type (const ElemType et)
       return EDGE2;
     case TRI3:
     case TRI6:
+    case TRI7:
       return TRI3;
     case TRISHELL3:
       return TRISHELL3;
@@ -2409,6 +2608,7 @@ ElemType Elem::first_order_equivalent_type (const ElemType et)
       return QUADSHELL4;
     case TET4:
     case TET10:
+    case TET14:
       return TET4;
     case HEX8:
     case HEX27:
@@ -2475,6 +2675,9 @@ ElemType Elem::second_order_equivalent_type (const ElemType et,
         return TRI6;
       }
 
+    case TRI7:
+      return TRI7;
+
       // Currently there is no TRISHELL6, so similarly to other types
       // where this is the case, we just return the input.
     case TRISHELL3:
@@ -2509,6 +2712,9 @@ ElemType Elem::second_order_equivalent_type (const ElemType et,
         // full_ordered not relevant
         return TET10;
       }
+
+    case TET14:
+      return TET14;
 
     case HEX8:
     case HEX20:
@@ -2725,5 +2931,13 @@ unsigned int Elem::opposite_node(const unsigned int /*n*/,
   // If the subclass didn't rederive this, using it is an error
   libmesh_not_implemented();
 }
+
+
+unsigned int Elem::center_node_on_side(const unsigned short libmesh_dbg_var(side)) const
+{
+  libmesh_assert_less (side, this->n_sides());
+  return invalid_uint;
+}
+
 
 } // namespace libMesh

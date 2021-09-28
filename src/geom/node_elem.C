@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -41,7 +41,7 @@ void NodeElem::connectivity(const unsigned int,
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float NodeElem::_embedding_matrix[1][1][1] =
+const Real NodeElem::_embedding_matrix[1][1][1] =
   {
     // embedding matrix for child 0
     {

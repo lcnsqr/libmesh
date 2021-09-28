@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -232,7 +232,7 @@ int main (int argc, char ** argv)
 
 
   // Add the variable "u" to "Poisson".  "u"
-  // will be approximated using second-order approximation.
+  // will be approximated using second-order approximation by default
   unsigned int u_var = system.add_variable("u",
                                            Utility::string_to_enum<Order>   (order),
                                            Utility::string_to_enum<FEFamily>(family));

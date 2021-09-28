@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -44,7 +44,7 @@ const unsigned int Tri3::side_nodes_map[Tri3::num_sides][Tri3::nodes_per_side] =
 
 #ifdef LIBMESH_ENABLE_AMR
 
-const float Tri3::_embedding_matrix[Tri3::num_children][Tri3::num_nodes][Tri3::num_nodes] =
+const Real Tri3::_embedding_matrix[Tri3::num_children][Tri3::num_nodes][Tri3::num_nodes] =
   {
     // embedding matrix for child 0
     {
@@ -128,6 +128,11 @@ Order Tri3::default_order() const
   return FIRST;
 }
 
+bool Tri3::has_invertible_map(Real tol) const
+{
+  return this->volume() > tol;
+}
+
 std::unique_ptr<Elem> Tri3::build_side_ptr (const unsigned int i,
                                             bool proxy)
 {
@@ -181,6 +186,11 @@ void Tri3::connectivity(const unsigned int libmesh_dbg_var(sf),
 
 
 
+
+Point Tri3::true_centroid () const
+{
+  return Elem::vertex_average();
+}
 
 Real Tri3::volume () const
 {
@@ -250,6 +260,17 @@ BoundingBox
 Tri3::loose_bounding_box () const
 {
   return Elem::loose_bounding_box();
+}
+
+
+void Tri3::permute(unsigned int perm_num)
+{
+  libmesh_assert_less (perm_num, 3);
+
+  for (unsigned int i = 0; i != perm_num; ++i)
+    {
+      swap3nodes(0,1,2);
+    }
 }
 
 

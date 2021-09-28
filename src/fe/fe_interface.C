@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -98,6 +98,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix FE<dim,HIERARCHIC>::func_and_args suffix                 \
       case L2_HIERARCHIC:                                               \
         prefix FE<dim,L2_HIERARCHIC>::func_and_args suffix              \
+      case SIDE_HIERARCHIC:                                             \
+        prefix FE<dim,SIDE_HIERARCHIC>::func_and_args suffix            \
       case LAGRANGE:                                                    \
         prefix FE<dim,LAGRANGE>::func_and_args suffix                   \
       case L2_LAGRANGE:                                                 \
@@ -118,7 +120,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
         libmesh_assert_equal_to (dim, 2);                               \
         prefix FE<2,SUBDIVISION>::func_and_args suffix                  \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -134,6 +136,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix FE<dim,HIERARCHIC>::func_and_args suffix                 \
       case L2_HIERARCHIC:                                               \
         prefix FE<dim,L2_HIERARCHIC>::func_and_args suffix              \
+      case SIDE_HIERARCHIC:                                             \
+        prefix FE<dim,SIDE_HIERARCHIC>::func_and_args suffix            \
       case LAGRANGE:                                                    \
         prefix FE<dim,LAGRANGE>::func_and_args suffix                   \
       case LAGRANGE_VEC:                                                \
@@ -160,7 +164,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case NEDELEC_ONE:                                                 \
         prefix FENedelecOne<dim>::func_and_args suffix                  \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -176,6 +180,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix FE<dim,HIERARCHIC>::func_and_args suffix                 \
       case L2_HIERARCHIC:                                               \
         prefix FE<dim,L2_HIERARCHIC>::func_and_args suffix              \
+      case SIDE_HIERARCHIC:                                             \
+        prefix FE<dim,SIDE_HIERARCHIC>::func_and_args suffix            \
       case LAGRANGE:                                                    \
         prefix FE<dim,LAGRANGE>::func_and_args suffix                   \
       case L2_LAGRANGE:                                                 \
@@ -200,7 +206,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case MONOMIAL_VEC:                                                \
         libmesh_error_msg("Error: Can only request scalar valued elements for Real FEInterface::func_and_args"); \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -218,6 +224,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case HERMITE:                                                     \
       case HIERARCHIC:                                                  \
       case L2_HIERARCHIC:                                               \
+      case SIDE_HIERARCHIC:                                             \
       case LAGRANGE:                                                    \
       case L2_LAGRANGE:                                                 \
       case MONOMIAL:                                                    \
@@ -229,7 +236,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case SUBDIVISION:                                                 \
         libmesh_error_msg("Error: Can only request vector valued elements for RealGradient FEInterface::shape"); \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -246,6 +253,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix FE<dim,HIERARCHIC>::func_and_args suffix                 \
       case L2_HIERARCHIC:                                               \
         prefix FE<dim,L2_HIERARCHIC>::func_and_args suffix              \
+      case SIDE_HIERARCHIC:                                             \
+        prefix FE<dim,SIDE_HIERARCHIC>::func_and_args suffix            \
       case LAGRANGE:                                                    \
         prefix FE<dim,LAGRANGE>::func_and_args suffix                   \
       case L2_LAGRANGE:                                                 \
@@ -260,7 +269,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
         libmesh_assert_equal_to (dim, 2);                               \
         prefix FE<2,SUBDIVISION>::func_and_args suffix                  \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -276,6 +285,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix FE<dim,HIERARCHIC>::func_and_args suffix                 \
       case L2_HIERARCHIC:                                               \
         prefix FE<dim,L2_HIERARCHIC>::func_and_args suffix              \
+      case SIDE_HIERARCHIC:                                             \
+        prefix FE<dim,SIDE_HIERARCHIC>::func_and_args suffix            \
       case LAGRANGE:                                                    \
         prefix FE<dim,LAGRANGE>::func_and_args suffix                   \
       case LAGRANGE_VEC:                                                \
@@ -296,7 +307,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case NEDELEC_ONE:                                                 \
         prefix FENedelecOne<dim>::func_and_args suffix                  \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -312,6 +323,8 @@ FEInterface::is_InfFE_elem(const ElemType et)
         prefix  FE<dim,HIERARCHIC>::func_and_args suffix                \
       case L2_HIERARCHIC:                                               \
         prefix  FE<dim,L2_HIERARCHIC>::func_and_args suffix             \
+      case SIDE_HIERARCHIC:                                             \
+        prefix  FE<dim,SIDE_HIERARCHIC>::func_and_args suffix           \
       case LAGRANGE:                                                    \
         prefix  FE<dim,LAGRANGE>::func_and_args suffix                  \
       case L2_LAGRANGE:                                                 \
@@ -330,7 +343,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case MONOMIAL_VEC:                                                \
         libmesh_error_msg("Error: Can only request scalar valued elements for Real FEInterface::func_and_args"); \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 
@@ -348,6 +361,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case HERMITE:                                                     \
       case HIERARCHIC:                                                  \
       case L2_HIERARCHIC:                                               \
+      case SIDE_HIERARCHIC:                                             \
       case LAGRANGE:                                                    \
       case L2_LAGRANGE:                                                 \
       case MONOMIAL:                                                    \
@@ -356,7 +370,7 @@ FEInterface::is_InfFE_elem(const ElemType et)
       case SUBDIVISION:                                                 \
         libmesh_error_msg("Error: Can only request vector valued elements for RealGradient FEInterface::func_and_args"); \
       default:                                                          \
-        libmesh_error_msg("Unsupported family = " << fe_t.family);      \
+        libmesh_error_msg("Unsupported family = " << Utility::enum_to_string(fe_t.family)); \
       }                                                                 \
   } while (0)
 #endif
@@ -1951,9 +1965,8 @@ void FEInterface::compute_data(const unsigned int dim,
       for (unsigned int d=0; d<dim; d++)
         data.local_transform[d].resize(dim);
 
-      UniquePtr<FEBase> fe (FEBase::build(dim, fe_t));
-      std::vector<Point> pt(1);
-      pt[0]=p;
+      auto fe = FEBase::build(dim, fe_t);
+      std::vector<Point> pt = {p};
       fe->get_dphideta(); // to compute the map
       fe->reinit(elem, &pt);
 
@@ -2051,6 +2064,12 @@ void FEInterface::compute_constraints (DofConstraints & constraints,
                                                       variable_number,
                                                       elem); return;
 
+          case SIDE_HIERARCHIC:
+            FE<2,SIDE_HIERARCHIC>::compute_constraints (constraints,
+                                                        dof_map,
+                                                        variable_number,
+                                                        elem); return;
+
           case LAGRANGE_VEC:
             FE<2,LAGRANGE_VEC>::compute_constraints (constraints,
                                                      dof_map,
@@ -2112,6 +2131,12 @@ void FEInterface::compute_constraints (DofConstraints & constraints,
                                                       variable_number,
                                                       elem); return;
 
+          case SIDE_HIERARCHIC:
+            FE<3,SIDE_HIERARCHIC>::compute_constraints (constraints,
+                                                        dof_map,
+                                                        variable_number,
+                                                        elem); return;
+
           case LAGRANGE_VEC:
             FE<3,LAGRANGE_VEC>::compute_constraints (constraints,
                                                      dof_map,
@@ -2162,14 +2187,24 @@ void FEInterface::compute_periodic_constraints (DofConstraints & constraints,
                                                 const unsigned int variable_number,
                                                 const Elem * elem)
 {
-  // No element-specific optimizations currently exist
-  FEBase::compute_periodic_constraints (constraints,
-                                        dof_map,
-                                        boundaries,
-                                        mesh,
-                                        point_locator,
-                                        variable_number,
-                                        elem);
+  const FEType & fe_t = dof_map.variable_type(variable_number);
+  // No element-specific optimizations currently exist, although
+  // we do have to select the right compute_periodic_constraints
+  // for the OutputType of this FEType.
+  switch (field_type(fe_t))
+  {
+    case TYPE_SCALAR:
+      FEBase::compute_periodic_constraints(
+          constraints, dof_map, boundaries, mesh, point_locator, variable_number, elem);
+      break;
+    case TYPE_VECTOR:
+      FEVectorBase::compute_periodic_constraints(
+          constraints, dof_map, boundaries, mesh, point_locator, variable_number, elem);
+      break;
+    default:
+      libmesh_error_msg(
+          "compute_periodic_constraints only set up for vector or scalar FEFieldTypes");
+  }
 }
 
 #endif // #ifdef LIBMESH_ENABLE_PERIODIC
@@ -2192,7 +2227,6 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
   switch (fe_t.family)
     {
     case LAGRANGE:
-    case L2_LAGRANGE: // TODO: L2_LAGRANGE can have higher "max_order" than LAGRANGE
     case LAGRANGE_VEC:
       switch (el_t)
         {
@@ -2205,6 +2239,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 1;
         case TRI6:
           return 2;
+        case TRI7:
+          return 3;
         case QUAD4:
         case QUADSHELL4:
           return 1;
@@ -2216,6 +2252,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 1;
         case TET10:
           return 2;
+        case TET14:
+          return 3;
         case HEX8:
           return 1;
         case HEX20:
@@ -2236,6 +2274,8 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         }
       break;
     case MONOMIAL:
+    case L2_LAGRANGE:
+    case L2_HIERARCHIC:
     case MONOMIAL_VEC:
       switch (el_t)
         {
@@ -2245,6 +2285,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
         case QUAD4:
         case QUADSHELL4:
         case QUAD8:
@@ -2252,6 +2293,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2279,6 +2321,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return 6;
         case QUAD4:
         case QUADSHELL4:
@@ -2290,6 +2333,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TET4:
           return 1;
         case TET10:
+        case TET14:
           return 2;
         case HEX8:
           return 1;
@@ -2320,6 +2364,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return 7;
         case QUAD4:
         case QUADSHELL4:
@@ -2330,6 +2375,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return 7;
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2354,6 +2400,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
         case QUAD4:
         case QUADSHELL4:
         case QUAD8:
@@ -2361,6 +2408,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2386,6 +2434,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 0;
         case TRI6:
+        case TRI7:
           return 3;
         case QUAD4:
         case QUADSHELL4:
@@ -2394,6 +2443,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case QUAD9:
         case TET4:
         case TET10:
+        case TET14:
         case HEX8:
         case HEX20:
         case HEX27:
@@ -2418,6 +2468,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRI3:
         case TRISHELL3:
         case TRI6:
+        case TRI7:
           return 0;
         case QUAD4:
         case QUADSHELL4:
@@ -2428,6 +2479,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return unlimited;
         case TET4:
         case TET10:
+        case TET14:
           return 0;
         case HEX8:
           return 3;
@@ -2456,6 +2508,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
         case TRISHELL3:
           return 1;
         case TRI6:
+        case TRI7:
           return unlimited;
         case QUAD4:
         case QUADSHELL4:
@@ -2466,6 +2519,7 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return unlimited;
         case TET4:
         case TET10:
+        case TET14:
           return 0;
         case HEX8:
         case HEX20:
@@ -2483,33 +2537,36 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
           return unknown;
         }
       break;
-    case L2_HIERARCHIC:
+    case SIDE_HIERARCHIC:
       switch (el_t)
         {
         case EDGE2:
         case EDGE3:
         case EDGE4:
-          return unlimited;
+          return unlimited; // although it's all the same as 0...
         case TRI3:
         case TRISHELL3:
-          return 1;
+          return 0;
         case TRI6:
+        case TRI7:
           return unlimited;
         case QUAD4:
         case QUADSHELL4:
-          return 1;
+          return 0;
         case QUAD8:
         case QUADSHELL8:
         case QUAD9:
           return unlimited;
         case TET4:
         case TET10:
+        case TET14:
           return 0;
         case HEX8:
         case HEX20:
-          return 1;
+          return 0;
         case HEX27:
-          return unlimited;
+          return 2; // p=3+ is still buggy in 3D
+          // return unlimited;
         case PRISM6:
         case PRISM15:
         case PRISM18:
@@ -2534,8 +2591,11 @@ unsigned int FEInterface::max_order(const FEType & fe_t,
       switch (el_t)
         {
         case TRI6:
+        case TRI7:
         case QUAD8:
         case QUAD9:
+        case TET10:
+        case TET14:
         case HEX20:
         case HEX27:
           return 1;
@@ -2560,6 +2620,7 @@ bool FEInterface::extra_hanging_dofs(const FEType & fe_t)
     case MONOMIAL:
     case MONOMIAL_VEC:
     case L2_HIERARCHIC:
+    case SIDE_HIERARCHIC:
     case XYZ:
     case SUBDIVISION:
     case LAGRANGE_VEC:
@@ -2648,6 +2709,10 @@ FEContinuity FEInterface::get_continuity(const FEType & fe_type)
 
     case NEDELEC_ONE:
       return H_CURL;
+
+      // Side elements
+    case SIDE_HIERARCHIC:
+      return SIDE_DISCONTINUOUS;
 
     default:
       libmesh_error_msg("Unknown FE Family " << Utility::enum_to_string(fe_type.family));

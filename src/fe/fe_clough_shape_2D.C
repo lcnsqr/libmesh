@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -16,13 +16,11 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-// C++ includes
-
-// Local includes
+// libmesh includes
 #include "libmesh/fe.h"
 #include "libmesh/elem.h"
 #include "libmesh/fe_interface.h"
-
+#include "libmesh/enum_to_string.h"
 
 // Anonymous namespace for persistent variables.
 // This allows us to cache the global-to-local mapping transformation
@@ -1844,6 +1842,7 @@ Real FE<2,CLOUGH>::shape(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 9);
               // FIXME: it would be nice to calculate (and cache)
@@ -1912,7 +1911,7 @@ Real FE<2,CLOUGH>::shape(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // 3rd-order Clough-Tocher element
@@ -1922,6 +1921,7 @@ Real FE<2,CLOUGH>::shape(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 12);
 
@@ -1986,7 +1986,7 @@ Real FE<2,CLOUGH>::shape(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error
@@ -2051,6 +2051,7 @@ Real FE<2,CLOUGH>::shape_deriv(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 9);
               // FIXME: it would be nice to calculate (and cache)
@@ -2119,7 +2120,7 @@ Real FE<2,CLOUGH>::shape_deriv(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // 3rd-order Clough-Tocher element
@@ -2129,6 +2130,7 @@ Real FE<2,CLOUGH>::shape_deriv(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 12);
 
@@ -2193,7 +2195,7 @@ Real FE<2,CLOUGH>::shape_deriv(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error
@@ -2257,6 +2259,7 @@ Real FE<2,CLOUGH>::shape_second_deriv(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 9);
               // FIXME: it would be nice to calculate (and cache)
@@ -2325,7 +2328,7 @@ Real FE<2,CLOUGH>::shape_second_deriv(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // 3rd-order Clough-Tocher element
@@ -2335,6 +2338,7 @@ Real FE<2,CLOUGH>::shape_second_deriv(const Elem * elem,
           {
             // C1 functions on the Clough-Tocher triangle.
           case TRI6:
+          case TRI7:
             {
               libmesh_assert_less (i, 12);
 
@@ -2399,7 +2403,7 @@ Real FE<2,CLOUGH>::shape_second_deriv(const Elem * elem,
                 }
             }
           default:
-            libmesh_error_msg("ERROR: Unsupported element type = " << type);
+            libmesh_error_msg("ERROR: Unsupported element type = " << Utility::enum_to_string(type));
           }
       }
       // by default throw an error

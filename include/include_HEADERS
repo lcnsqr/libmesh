@@ -61,6 +61,7 @@ include_HEADERS =  \
         enums/enum_norm_type.h \
         enums/enum_order.h \
         enums/enum_parallel_type.h \
+        enums/enum_partitioner_type.h \
         enums/enum_point_locator_type.h \
         enums/enum_preconditioner_type.h \
         enums/enum_quadrature_type.h \
@@ -127,6 +128,7 @@ include_HEADERS =  \
         geom/cell_pyramid5.h \
         geom/cell_tet.h \
         geom/cell_tet10.h \
+        geom/cell_tet14.h \
         geom/cell_tet4.h \
         geom/compare_elems_by_level.h \
         geom/edge.h \
@@ -155,6 +157,7 @@ include_HEADERS =  \
         geom/face_tri3_shell.h \
         geom/face_tri3_subdivision.h \
         geom/face_tri6.h \
+        geom/face_tri7.h \
         geom/node.h \
         geom/node_elem.h \
         geom/node_range.h \
@@ -242,6 +245,7 @@ include_HEADERS =  \
         numerics/eigen_sparse_vector.h \
         numerics/fem_function_base.h \
         numerics/function_base.h \
+        numerics/lumped_mass_matrix.h \
         numerics/numeric_vector.h \
         numerics/parsed_fem_function.h \
         numerics/parsed_fem_function_parameter.h \
@@ -400,6 +404,7 @@ include_HEADERS =  \
         systems/frequency_system.h \
         systems/generic_projector.h \
         systems/implicit_system.h \
+        systems/inter_mesh_projection.h \
         systems/linear_implicit_system.h \
         systems/newmark_system.h \
         systems/nonlinear_implicit_system.h \
@@ -436,6 +441,7 @@ include_HEADERS =  \
         timpi_shims/request.h \
         timpi_shims/standard_type.h \
         timpi_shims/status.h \
+        utils/chunked_mapvector.h \
         utils/compare_types.h \
         utils/enum_to_string.h \
         utils/error_vector.h \
@@ -455,6 +461,7 @@ include_HEADERS =  \
         utils/perfmon.h \
         utils/plt_loader.h \
         utils/point_locator_base.h \
+        utils/point_locator_nanoflann.h \
         utils/point_locator_tree.h \
         utils/pointer_to_pointer_iter.h \
         utils/pool_allocator.h \

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -35,6 +35,7 @@
 #include "libmesh/enum_norm_type.h"
 #include "libmesh/enum_order.h"
 #include "libmesh/enum_parallel_type.h"
+#include "libmesh/enum_partitioner_type.h"
 #include "libmesh/enum_point_locator_type.h"
 #include "libmesh/enum_preconditioner_type.h"
 #include "libmesh/enum_quadrature_type.h"
@@ -115,6 +116,7 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["TRISHELL3"      ]=TRISHELL3;
       elem_type_to_enum["TRI3SUBDIVISION"]=TRI3SUBDIVISION;
       elem_type_to_enum["TRI6"           ]=TRI6;
+      elem_type_to_enum["TRI7"           ]=TRI7;
 
       elem_type_to_enum["QUAD"           ]=QUAD4;
       elem_type_to_enum["QUAD4"          ]=QUAD4;
@@ -126,6 +128,7 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["TET"            ]=TET4;
       elem_type_to_enum["TET4"           ]=TET4;
       elem_type_to_enum["TET10"          ]=TET10;
+      elem_type_to_enum["TET14"          ]=TET14;
 
       elem_type_to_enum["HEX"            ]=HEX8;
       elem_type_to_enum["HEX8"           ]=HEX8;
@@ -136,11 +139,13 @@ void init_elem_type_to_enum ()
       elem_type_to_enum["PRISM6"         ]=PRISM6;
       elem_type_to_enum["PRISM15"        ]=PRISM15;
       elem_type_to_enum["PRISM18"        ]=PRISM18;
+      elem_type_to_enum["PRISM20"        ]=PRISM20;
 
       elem_type_to_enum["PYRAMID"        ]=PYRAMID5;
       elem_type_to_enum["PYRAMID5"       ]=PYRAMID5;
       elem_type_to_enum["PYRAMID13"      ]=PYRAMID13;
       elem_type_to_enum["PYRAMID14"      ]=PYRAMID14;
+      elem_type_to_enum["PYRAMID18"      ]=PYRAMID18;
 
       elem_type_to_enum["INFEDGE"        ]=INFEDGE2;
       elem_type_to_enum["INFEDGE2"       ]=INFEDGE2;
@@ -233,26 +238,27 @@ void init_fefamily_to_enum ()
 {
   if (fefamily_to_enum.empty())
     {
-      fefamily_to_enum["LAGRANGE"     ]=LAGRANGE;
-      fefamily_to_enum["LAGRANGE_VEC" ]=LAGRANGE_VEC;
-      fefamily_to_enum["L2_LAGRANGE"  ]=L2_LAGRANGE;
-      fefamily_to_enum["HIERARCHIC"   ]=HIERARCHIC;
-      fefamily_to_enum["L2_HIERARCHIC"]=L2_HIERARCHIC;
-      fefamily_to_enum["MONOMIAL"     ]=MONOMIAL;
-      fefamily_to_enum["MONOMIAL_VEC" ]=MONOMIAL_VEC;
-      fefamily_to_enum["SCALAR"       ]=SCALAR;
-      fefamily_to_enum["XYZ"          ]=XYZ;
-      fefamily_to_enum["BERNSTEIN"    ]=BERNSTEIN;
+      fefamily_to_enum["LAGRANGE"          ]=LAGRANGE;
+      fefamily_to_enum["LAGRANGE_VEC"      ]=LAGRANGE_VEC;
+      fefamily_to_enum["L2_LAGRANGE"       ]=L2_LAGRANGE;
+      fefamily_to_enum["HIERARCHIC"        ]=HIERARCHIC;
+      fefamily_to_enum["L2_HIERARCHIC"     ]=L2_HIERARCHIC;
+      fefamily_to_enum["SIDE_HIERARCHIC"   ]=SIDE_HIERARCHIC;
+      fefamily_to_enum["MONOMIAL"          ]=MONOMIAL;
+      fefamily_to_enum["MONOMIAL_VEC"      ]=MONOMIAL_VEC;
+      fefamily_to_enum["SCALAR"            ]=SCALAR;
+      fefamily_to_enum["XYZ"               ]=XYZ;
+      fefamily_to_enum["BERNSTEIN"         ]=BERNSTEIN;
       fefamily_to_enum["RATIONAL_BERNSTEIN"]=RATIONAL_BERNSTEIN;
-      fefamily_to_enum["SZABAB"       ]=SZABAB;
-      fefamily_to_enum["INFINITE_MAP" ]=INFINITE_MAP;
-      fefamily_to_enum["JACOBI_20_00" ]=JACOBI_20_00;
-      fefamily_to_enum["JACOBI_30_00" ]=JACOBI_30_00;
-      fefamily_to_enum["LEGENDRE"     ]=LEGENDRE;
-      fefamily_to_enum["CLOUGH"       ]=CLOUGH;
-      fefamily_to_enum["HERMITE"      ]=HERMITE;
-      fefamily_to_enum["SUBDIVISION"  ]=SUBDIVISION;
-      fefamily_to_enum["NEDELEC_ONE"  ]=NEDELEC_ONE;
+      fefamily_to_enum["SZABAB"            ]=SZABAB;
+      fefamily_to_enum["INFINITE_MAP"      ]=INFINITE_MAP;
+      fefamily_to_enum["JACOBI_20_00"      ]=JACOBI_20_00;
+      fefamily_to_enum["JACOBI_30_00"      ]=JACOBI_30_00;
+      fefamily_to_enum["LEGENDRE"          ]=LEGENDRE;
+      fefamily_to_enum["CLOUGH"            ]=CLOUGH;
+      fefamily_to_enum["HERMITE"           ]=HERMITE;
+      fefamily_to_enum["SUBDIVISION"       ]=SUBDIVISION;
+      fefamily_to_enum["NEDELEC_ONE"       ]=NEDELEC_ONE;
     }
 
 }
@@ -289,6 +295,37 @@ void init_quadrature_type_to_enum ()
       quadrature_type_to_enum["QCLOUGH"    ]=QCLOUGH;
       quadrature_type_to_enum["QGAUSS_LOBATTO"    ]=QGAUSS_LOBATTO;
       quadrature_type_to_enum["QNODAL"]=QNODAL;
+    }
+}
+
+
+INSTANTIATE_ENUM_MAPS(PartitionerType, partitioner_type)
+
+// Initialize partitioner_type_to_enum on first call
+void init_partitioner_type_to_enum ()
+{
+  if (partitioner_type_to_enum.empty())
+    {
+      partitioner_type_to_enum["CENTROID_PARTITIONER"        ]=CENTROID_PARTITIONER;
+      partitioner_type_to_enum["LINEAR_PARTITIONER"          ]=LINEAR_PARTITIONER;
+      partitioner_type_to_enum["SFC_PARTITIONER"             ]=SFC_PARTITIONER;
+      partitioner_type_to_enum["HILBERT_SFC_PARTITIONER"     ]=HILBERT_SFC_PARTITIONER;
+      partitioner_type_to_enum["MORTON_SFC_PARTITIONER"      ]=MORTON_SFC_PARTITIONER;
+      partitioner_type_to_enum["METIS_PARTITIONER"           ]=METIS_PARTITIONER;
+      partitioner_type_to_enum["PARMETIS_PARTITIONER"        ]=PARMETIS_PARTITIONER;
+      partitioner_type_to_enum["SUBDOMAIN_PARTITIONER"       ]=SUBDOMAIN_PARTITIONER;
+      partitioner_type_to_enum["MAPPED_SUBDOMAIN_PARTITIONER"]=MAPPED_SUBDOMAIN_PARTITIONER;
+
+      //shorter
+      partitioner_type_to_enum["CENTROID"                    ]=CENTROID_PARTITIONER;
+      partitioner_type_to_enum["LINEAR"                      ]=LINEAR_PARTITIONER;
+      partitioner_type_to_enum["SFC"                         ]=SFC_PARTITIONER;
+      partitioner_type_to_enum["HILBERT_SFC"                 ]=HILBERT_SFC_PARTITIONER;
+      partitioner_type_to_enum["MORTON_SFC"                  ]=MORTON_SFC_PARTITIONER;
+      partitioner_type_to_enum["METIS"                       ]=METIS_PARTITIONER;
+      partitioner_type_to_enum["PARMETIS"                    ]=PARMETIS_PARTITIONER;
+      partitioner_type_to_enum["SUBDOMAIN"                   ]=SUBDOMAIN_PARTITIONER;
+      partitioner_type_to_enum["MAPPED_SUBDOMAIN"            ]=MAPPED_SUBDOMAIN_PARTITIONER;
     }
 }
 
@@ -391,6 +428,7 @@ void init_solvertype_to_enum ()
       solvertype_to_enum["TCQMR"         ]=TCQMR;
       solvertype_to_enum["TFQMR"         ]=TFQMR;
       solvertype_to_enum["BICG"          ]=BICG;
+      solvertype_to_enum["BICGSTAB"      ]=BICGSTAB;
       solvertype_to_enum["MINRES"        ]=MINRES;
       solvertype_to_enum["GMRES"         ]=GMRES;
       solvertype_to_enum["LSQR"          ]=LSQR;
@@ -400,6 +438,7 @@ void init_solvertype_to_enum ()
       solvertype_to_enum["SSOR"          ]=SSOR;
       solvertype_to_enum["RICHARDSON"    ]=RICHARDSON;
       solvertype_to_enum["CHEBYSHEV"     ]=CHEBYSHEV;
+      solvertype_to_enum["SPARSELU"      ]=SPARSELU;
       solvertype_to_enum["INVALID_SOLVER"]=INVALID_SOLVER;
     }
 }
@@ -643,6 +682,7 @@ INSTANTIATE_STRING_TO_ENUM(Order,order)
 INSTANTIATE_STRING_TO_ENUM(FEFamily,fefamily)
 INSTANTIATE_STRING_TO_ENUM(InfMapType,inf_map_type)
 INSTANTIATE_STRING_TO_ENUM(QuadratureType,quadrature_type)
+INSTANTIATE_STRING_TO_ENUM(PartitionerType,partitioner_type)
 INSTANTIATE_STRING_TO_ENUM(PreconditionerType,preconditioner_type)
 
 #ifdef LIBMESH_ENABLE_AMR

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -54,6 +54,7 @@ void QGauss::init_3D(const ElemType, unsigned int)
       // Tetrahedral quadrature rules
     case TET4:
     case TET10:
+    case TET14:
       {
         switch(get_order())
           {
@@ -495,7 +496,7 @@ void QGauss::init_3D(const ElemType, unsigned int)
                 }
             }
           }
-      } // end case TET4,TET10
+      } // end case TET
 
 
 

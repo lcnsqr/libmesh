@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -56,18 +56,18 @@ public:
   ConstFEMFunction & operator= (ConstFEMFunction &&) = default;
   virtual ~ConstFEMFunction () = default;
 
-  virtual std::unique_ptr<FEMFunctionBase<Output>> clone () const
+  virtual std::unique_ptr<FEMFunctionBase<Output>> clone () const override
   {return libmesh_make_unique<ConstFEMFunction>(*this); }
 
   virtual Output operator() (const FEMContext &,
                              const Point &,
-                             const Real /* time */ = 0.)
+                             const Real /* time */ = 0.) override
   { return _c; }
 
   virtual void operator() (const FEMContext &,
                            const Point &,
                            const Real,
-                           DenseVector<Output> & output)
+                           DenseVector<Output> & output) override
   {
     for (auto i : index_range(output))
       output(i) = _c;

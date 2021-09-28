@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -60,6 +60,7 @@ void QTrap::init_2D(const ElemType, unsigned int)
     case TRISHELL3:
     case TRI3SUBDIVISION:
     case TRI6:
+    case TRI7:
       {
         _points.resize(3);
         _weights.resize(3);

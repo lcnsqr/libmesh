@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -1265,7 +1265,7 @@ void PetscLinearSolver<T>::get_residual_history(std::vector<double> & hist)
 
   // Recent versions of PETSc require the residual
   // history vector pointer to be declared as const.
-#if PETSC_RELEASE_LESS_THAN(3,14,4)
+#if PETSC_RELEASE_LESS_THAN(3,15,0)
   PetscReal * p;
 #else
   const PetscReal * p;
@@ -1306,7 +1306,7 @@ Real PetscLinearSolver<T>::get_initial_residual()
 
   // Recent versions of PETSc require the residual
   // history vector pointer to be declared as const.
-#if PETSC_RELEASE_LESS_THAN(3,14,4)
+#if PETSC_RELEASE_LESS_THAN(3,15,0)
   PetscReal * p;
 #else
   const PetscReal * p;

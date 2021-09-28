@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -75,6 +75,7 @@ public:
    */
   virtual void integrate_qoi_timestep() override;
 
+#ifdef LIBMESH_ENABLE_AMR
   /**
    * A method to compute the adjoint refinement error estimate at the current timestep.
    * int_{tstep_start}^{tstep_end} R(u^h,z) dt.
@@ -84,6 +85,7 @@ public:
    * CURRENTLY ONLY SUPPORTED for Backward Euler.
    */
   virtual void integrate_adjoint_refinement_error_estimate(AdjointRefinementEstimator & adjoint_refinement_error_estimator, ErrorVector & QoI_elementwise_error) override;
+#endif // LIBMESH_ENABLE_AMR
 
   /**
    * This method uses the DifferentiablePhysics'

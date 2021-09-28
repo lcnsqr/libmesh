@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -292,9 +292,12 @@ int main (int argc, char ** argv)
     std::ifstream i("general.in");
     libmesh_error_msg_if(!i, '[' << init.comm().rank() << "] Can't find general.in; exiting early.");
   }
-  GetPot infile("general.in");
 
   // Read in parameters from the input file
+  GetPot infile("general.in");
+  // But allow the command line to override it.
+  infile.parse_command_line(argc, argv);
+
   FEMParameters param(init.comm());
   param.read(infile);
 

@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -79,7 +79,7 @@ void Elem::set_p_level(unsigned int p)
         }
     }
 
-  _p_level = cast_int<unsigned char>(p);
+  this->hack_p_level(p);
 }
 
 
@@ -187,7 +187,7 @@ void Elem::coarsen()
           for (unsigned int n=0; n<n_n; n++)
             {
               // The value from the embedding matrix
-              const float em_val = this->embedding_matrix(c,cnode,n);
+              const Real em_val = this->embedding_matrix(c,cnode,n);
 
               // The node location is somewhere between existing vertices
               if ((em_val != 0.) && (em_val != 1.))

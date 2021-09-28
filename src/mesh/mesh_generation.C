@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -17,7 +17,7 @@
 
 
 
-// Local includes
+// libmesh includes
 #include "libmesh/mesh_generation.h"
 #include "libmesh/unstructured_mesh.h"
 #include "libmesh/mesh_refinement.h"
@@ -26,6 +26,7 @@
 #include "libmesh/edge_edge4.h"
 #include "libmesh/face_tri3.h"
 #include "libmesh/face_tri6.h"
+#include "libmesh/face_tri7.h"
 #include "libmesh/face_quad4.h"
 #include "libmesh/face_quad8.h"
 #include "libmesh/face_quad9.h"
@@ -50,6 +51,7 @@
 #include "libmesh/int_range.h"
 #include "libmesh/parallel.h"
 #include "libmesh/parallel_ghost_sync.h"
+#include "libmesh/enum_to_string.h"
 
 // C++ includes
 #include <cstdlib> // *must* precede <cmath> for proper std:abs() on PGI, Sun Studio CC
@@ -88,12 +90,13 @@ unsigned int idx(const ElemType type,
     case QUAD8:
     case QUAD9:
     case TRI6:
+    case TRI7:
       {
         return i + j*(2*nx+1);
       }
 
     default:
-      libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+      libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
     }
 
   return libMesh::invalid_uint;
@@ -123,6 +126,7 @@ unsigned int idx(const ElemType type,
     case HEX27:
     case TET4:  // TET4's are created from an initial HEX27 discretization
     case TET10: // TET10's are created from an initial HEX27 discretization
+    case TET14: // TET14's are created from an initial HEX27 discretization
     case PYRAMID5: // PYRAMID5's are created from an initial HEX27 discretization
     case PYRAMID13:
     case PYRAMID14:
@@ -133,7 +137,7 @@ unsigned int idx(const ElemType type,
       }
 
     default:
-      libmesh_error_msg("ERROR: Unrecognized element type.");
+      libmesh_error_msg("ERROR: Unrecognized element type == " << Utility::enum_to_string(type));
     }
 
   return libMesh::invalid_uint;
@@ -389,7 +393,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
         // Reserve nodes
@@ -415,7 +419,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -428,7 +432,13 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case EDGE2:
             {
               for (unsigned int i=0; i<=nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/nx, 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/nx, 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == nx)
+                  boundary_info.add_node(node, 1);
+              }
 
               break;
             }
@@ -436,20 +446,32 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case EDGE3:
             {
               for (unsigned int i=0; i<=2*nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/(2*nx), 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/(2*nx), 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == 2*nx)
+                  boundary_info.add_node(node, 1);
+              }
               break;
             }
 
           case EDGE4:
             {
               for (unsigned int i=0; i<=3*nx; i++)
-                mesh.add_point (Point(static_cast<Real>(i)/(3*nx), 0, 0), node_id++);
+              {
+                const Node * const node = mesh.add_point (Point(static_cast<Real>(i)/(3*nx), 0, 0), node_id++);
+                if (i == 0)
+                  boundary_info.add_node(node, 0);
+                if (i == 3*nx)
+                  boundary_info.add_node(node, 1);
+              }
 
               break;
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
 
           }
 
@@ -513,7 +535,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 1D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 1D element type == " << Utility::enum_to_string(type));
           }
 
         // Move the nodes to their final locations.
@@ -573,13 +595,14 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
           case TRI3:
           case TRI6:
+          case TRI7:
             {
               mesh.reserve_elem (2*nx*ny);
               break;
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -604,9 +627,14 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               break;
             }
 
+          case TRI7:
+            {
+              mesh.reserve_nodes( (2*nx+1)*(2*ny+1) + 2*nx*ny );
+              break;
+            }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -623,9 +651,21 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             {
               for (unsigned int j=0; j<=ny; j++)
                 for (unsigned int i=0; i<=nx; i++)
-                  mesh.add_point (Point(static_cast<Real>(i)/static_cast<Real>(nx),
-                                        static_cast<Real>(j)/static_cast<Real>(ny),
-                                        0.), node_id++);
+                {
+                  const Node * const node =
+                      mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(nx),
+                                           static_cast<Real>(j) / static_cast<Real>(ny),
+                                           0.),
+                                     node_id++);
+                  if (j == 0)
+                    boundary_info.add_node(node, 0);
+                  if (j == ny)
+                    boundary_info.add_node(node, 2);
+                  if (i == 0)
+                    boundary_info.add_node(node, 3);
+                  if (i == nx)
+                    boundary_info.add_node(node, 1);
+                }
 
               break;
             }
@@ -633,19 +673,50 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case QUAD8:
           case QUAD9:
           case TRI6:
+          case TRI7:
             {
               for (unsigned int j=0; j<=(2*ny); j++)
                 for (unsigned int i=0; i<=(2*nx); i++)
-                  mesh.add_point (Point(static_cast<Real>(i)/static_cast<Real>(2*nx),
-                                        static_cast<Real>(j)/static_cast<Real>(2*ny),
-                                        0), node_id++);
+                {
+                  const Node * const node =
+                      mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(2 * nx),
+                                           static_cast<Real>(j) / static_cast<Real>(2 * ny),
+                                           0),
+                                     node_id++);
+                  if (j == 0)
+                    boundary_info.add_node(node, 0);
+                  if (j == 2*ny)
+                    boundary_info.add_node(node, 2);
+                  if (i == 0)
+                    boundary_info.add_node(node, 3);
+                  if (i == 2*nx)
+                    boundary_info.add_node(node, 1);
+                }
+
+              // We'll add any interior Tri7 nodes last, to keep from
+              // messing with our idx function
+              if (type == TRI7)
+                for (unsigned int j=0; j<(3*ny); j += 3)
+                  for (unsigned int i=0; i<(3*nx); i += 3)
+                    {
+                      // The bottom-right triangle's center node
+                      mesh.add_point(Point(static_cast<Real>(i+2) / static_cast<Real>(3 * nx),
+                                           static_cast<Real>(j+1) / static_cast<Real>(3 * ny),
+                                           0),
+                                     node_id++);
+                      // The top-left triangle's center node
+                      mesh.add_point(Point(static_cast<Real>(i+1) / static_cast<Real>(3 * nx),
+                                           static_cast<Real>(j+2) / static_cast<Real>(3 * ny),
+                                           0),
+                                     node_id++);
+                    }
 
               break;
             }
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -756,12 +827,13 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           case TRI6:
+          case TRI7:
             {
               for (unsigned int j=0; j<(2*ny); j += 2)
                 for (unsigned int i=0; i<(2*nx); i += 2)
                   {
-                    // Add first Tri6
-                    Elem * elem = mesh.add_elem(Elem::build_with_id(TRI6, elem_id++));
+                    // Add first Tri in the bottom-right of its quad
+                    Elem * elem = mesh.add_elem(Elem::build_with_id(type, elem_id++));
                     elem->set_node(0) = mesh.node_ptr(idx(type,nx,i,j)    );
                     elem->set_node(1) = mesh.node_ptr(idx(type,nx,i+2,j)  );
                     elem->set_node(2) = mesh.node_ptr(idx(type,nx,i+2,j+2));
@@ -769,20 +841,26 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                     elem->set_node(4) = mesh.node_ptr(idx(type,nx,i+2,j+1));
                     elem->set_node(5) = mesh.node_ptr(idx(type,nx,i+1,j+1));
 
+                    if (type == TRI7)
+                      elem->set_node(6) = mesh.node_ptr(elem->id()+(2*nx+1)*(2*ny+1));
+
                     if (j == 0)
                       boundary_info.add_side(elem, 0, 0);
 
                     if (i == 2*(nx-1))
                       boundary_info.add_side(elem, 1, 1);
 
-                    // Add second Tri6
-                    elem = mesh.add_elem(Elem::build_with_id(TRI6, elem_id++));
+                    // Add second Tri in the top left of its quad
+                    elem = mesh.add_elem(Elem::build_with_id(type, elem_id++));
                     elem->set_node(0) = mesh.node_ptr(idx(type,nx,i,j)    );
                     elem->set_node(1) = mesh.node_ptr(idx(type,nx,i+2,j+2));
                     elem->set_node(2) = mesh.node_ptr(idx(type,nx,i,j+2)  );
                     elem->set_node(3) = mesh.node_ptr(idx(type,nx,i+1,j+1));
                     elem->set_node(4) = mesh.node_ptr(idx(type,nx,i+1,j+2));
                     elem->set_node(5) = mesh.node_ptr(idx(type,nx,i,j+1)  );
+
+                    if (type == TRI7)
+                      elem->set_node(6) = mesh.node_ptr(elem->id()+(2*nx+1)*(2*ny+1));
 
                     if (j == 2*(ny-1))
                       boundary_info.add_side(elem, 1, 2);
@@ -795,7 +873,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 2D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 2D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -864,6 +942,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case HEX27:
           case TET4:  // TET4's are created from an initial HEX27 discretization
           case TET10: // TET10's are created from an initial HEX27 discretization
+          case TET14: // TET14's are created from an initial HEX27 discretization
           case PYRAMID5: // PYRAMIDs are created from an initial HEX27 discretization
           case PYRAMID13:
           case PYRAMID14:
@@ -881,7 +960,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             }
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -917,8 +996,16 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               break;
             }
 
+          case TET14:
+            {
+              mesh.reserve_nodes( (2*nx+1)*(2*ny+1)*(2*nz+1) +
+                                  24*nx*ny*nz +
+                                  4*(nx*ny + ny*nz + nx*nz) );
+              break;
+            }
+
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -935,9 +1022,25 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               for (unsigned int k=0; k<=nz; k++)
                 for (unsigned int j=0; j<=ny; j++)
                   for (unsigned int i=0; i<=nx; i++)
-                    mesh.add_point(Point(static_cast<Real>(i)/static_cast<Real>(nx),
-                                         static_cast<Real>(j)/static_cast<Real>(ny),
-                                         static_cast<Real>(k)/static_cast<Real>(nz)), node_id++);
+                  {
+                    const Node * const node =
+                        mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(nx),
+                                             static_cast<Real>(j) / static_cast<Real>(ny),
+                                             static_cast<Real>(k) / static_cast<Real>(nz)),
+                                       node_id++);
+                    if (k == 0)
+                      boundary_info.add_node(node, 0);
+                    if (k == nz)
+                      boundary_info.add_node(node, 5);
+                    if (j == 0)
+                      boundary_info.add_node(node, 1);
+                    if (j == ny)
+                      boundary_info.add_node(node, 3);
+                    if (i == 0)
+                      boundary_info.add_node(node, 4);
+                    if (i == nx)
+                      boundary_info.add_node(node, 2);
+                  }
 
               break;
             }
@@ -946,6 +1049,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case HEX27:
           case TET4: // TET4's are created from an initial HEX27 discretization
           case TET10: // TET10's are created from an initial HEX27 discretization
+          case TET14: // TET14's are created from an initial HEX27 discretization
           case PYRAMID5: // PYRAMIDs are created from an initial HEX27 discretization
           case PYRAMID13:
           case PYRAMID14:
@@ -955,16 +1059,32 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
               for (unsigned int k=0; k<=(2*nz); k++)
                 for (unsigned int j=0; j<=(2*ny); j++)
                   for (unsigned int i=0; i<=(2*nx); i++)
-                    mesh.add_point(Point(static_cast<Real>(i)/static_cast<Real>(2*nx),
-                                         static_cast<Real>(j)/static_cast<Real>(2*ny),
-                                         static_cast<Real>(k)/static_cast<Real>(2*nz)), node_id++);
+                  {
+                    const Node * const node =
+                        mesh.add_point(Point(static_cast<Real>(i) / static_cast<Real>(2 * nx),
+                                             static_cast<Real>(j) / static_cast<Real>(2 * ny),
+                                             static_cast<Real>(k) / static_cast<Real>(2 * nz)),
+                                       node_id++);
+                    if (k == 0)
+                      boundary_info.add_node(node, 0);
+                    if (k == 2*nz)
+                      boundary_info.add_node(node, 5);
+                    if (j == 0)
+                      boundary_info.add_node(node, 1);
+                    if (j == 2*ny)
+                      boundary_info.add_node(node, 3);
+                    if (i == 0)
+                      boundary_info.add_node(node, 4);
+                    if (i == 2*nx)
+                      boundary_info.add_node(node, 2);
+                  }
 
               break;
             }
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -1077,6 +1197,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
           case HEX27:
           case TET4: // TET4's are created from an initial HEX27 discretization
           case TET10: // TET10's are created from an initial HEX27 discretization
+          case TET14: // TET14's are created from an initial HEX27 discretization
           case PYRAMID5: // PYRAMIDs are created from an initial HEX27 discretization
           case PYRAMID13:
           case PYRAMID14:
@@ -1109,7 +1230,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                       elem->set_node(18) = mesh.node_ptr(idx(type,nx,ny,i+1,j+2,k+2));
                       elem->set_node(19) = mesh.node_ptr(idx(type,nx,ny,i,  j+1,k+2));
 
-                      if ((type == HEX27) || (type == TET4) || (type == TET10) ||
+                      if ((type == HEX27) || (type == TET4) || (type == TET10) || (type == TET14) ||
                           (type == PYRAMID5) || (type == PYRAMID13) || (type == PYRAMID14))
                         {
                           elem->set_node(20) = mesh.node_ptr(idx(type,nx,ny,i+1,j+1,k)  );
@@ -1238,7 +1359,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
 
           default:
-            libmesh_error_msg("ERROR: Unrecognized 3D element type.");
+            libmesh_error_msg("ERROR: Unrecognized 3D element type == " << Utility::enum_to_string(type));
           }
 
 
@@ -1274,6 +1395,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
         // the various elements.
         if ((type == TET4) ||
             (type == TET10) ||
+            (type == TET14) ||
             (type == PYRAMID5) ||
             (type == PYRAMID13) ||
             (type == PYRAMID14))
@@ -1281,7 +1403,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             // Temporary storage for new elements. (24 tets per hex, 6 pyramids)
             std::vector<std::unique_ptr<Elem>> new_elements;
 
-            if ((type == TET4) || (type == TET10))
+            if ((type == TET4) || (type == TET10) || (type == TET14))
               new_elements.reserve(24*mesh.n_elem());
             else
               new_elements.reserve(6*mesh.n_elem());
@@ -1289,7 +1411,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
             // Create tetrahedra or pyramids
             for (auto & base_hex : mesh.element_ptr_range())
               {
-                // Get a pointer to the node located at the HEX27 centroid
+                // Get a pointer to the node located at the HEX27 center
                 Node * apex_node = base_hex->node_ptr(26);
 
                 // Container to catch ids handed back from BoundaryInfo
@@ -1309,7 +1431,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                     // Need to build the full-ordered side!
                     std::unique_ptr<Elem> side = base_hex->build_side_ptr(s);
 
-                    if ((type == TET4) || (type == TET10))
+                    if ((type == TET4) || (type == TET10) || (type == TET14))
                       {
                         // Build 4 sub-tets per side
                         for (unsigned int sub_tet=0; sub_tet<4; ++sub_tet)
@@ -1317,7 +1439,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                             new_elements.push_back( Elem::build(TET4) );
                             auto & sub_elem = new_elements.back();
                             sub_elem->set_node(0) = side->node_ptr(sub_tet);
-                            sub_elem->set_node(1) = side->node_ptr(8);                           // centroid of the face
+                            sub_elem->set_node(1) = side->node_ptr(8);                           // center of the face
                             sub_elem->set_node(2) = side->node_ptr(sub_tet==3 ? 0 : sub_tet+1 ); // wrap-around
                             sub_elem->set_node(3) = apex_node;                                   // apex node always used!
 
@@ -1327,7 +1449,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                             if (b_id != BoundaryInfo::invalid_id)
                               boundary_info.add_side(sub_elem.get(), 0, b_id);
                           }
-                      } // end if ((type == TET4) || (type == TET10))
+                      } // end if ((type == TET4) || (type == TET10) || (type == TET14))
 
                     else // type==PYRAMID5 || type==PYRAMID13 || type==PYRAMID14
                       {
@@ -1369,7 +1491,7 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
                 mesh.add_elem( std::move(new_elements[i]) );
               }
 
-          } // end if (type == TET4,TET10,PYRAMID5,PYRAMID13,PYRAMID14
+          } // end if (type == TET4,TET10,TET14,PYRAMID5,PYRAMID13,PYRAMID14
 
 
         // Use all_second_order to convert the TET4's to TET10's or PYRAMID5's to PYRAMID14's
@@ -1378,6 +1500,9 @@ void MeshTools::Generation::build_cube(UnstructuredMesh & mesh,
 
         else if (type == PYRAMID13)
           mesh.all_second_order(/*full_ordered=*/false);
+
+        else if (type == TET14)
+          mesh.all_complete_order();
 
 
         // Add sideset names to boundary info (Z axis out of the screen)

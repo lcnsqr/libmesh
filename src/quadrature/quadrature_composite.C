@@ -1,5 +1,5 @@
 // The libMesh Finite Element Library.
-// Copyright (C) 2002-2020 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
+// Copyright (C) 2002-2021 Benjamin S. Kirk, John W. Peterson, Roy H. Stogner
 
 // This library is free software; you can redistribute it and/or
 // modify it under the terms of the GNU Lesser General Public
@@ -105,7 +105,7 @@ void QComposite<QSubCell>::init (const Elem & elem,
   // inside subelem
   {
     const std::vector<Elem const *> & inside_elem (_elem_cutter.inside_elements());
-    std::cout << inside_elem.size() << " elements inside\n";
+    // std::cout << inside_elem.size() << " elements inside\n";
 
     this->add_subelem_values(inside_elem);
   }
@@ -113,12 +113,12 @@ void QComposite<QSubCell>::init (const Elem & elem,
   // outside subelem
   {
     const std::vector<Elem const *> & outside_elem (_elem_cutter.outside_elements());
-    std::cout << outside_elem.size() << " elements outside\n";
+    // std::cout << outside_elem.size() << " elements outside\n";
 
     this->add_subelem_values(outside_elem);
   }
 
-  this->print_info();
+  // this->print_info();
 }
 
 
